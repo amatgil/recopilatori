@@ -1,44 +1,39 @@
+use recopilatori::*;
+use std::{path::Path, time::Instant};
+
 use sqlx::sqlite::*;
 
-async fn setup(pool: SqlitePool) -> Result<(), sqlx::Error> {
-    let create = sqlx::query(
-        r#"
-        CREATE TABLE IF NOT EXISTS tipus_fitxers (
-            tipus_id INTEGER PRIMARY KEY,
-            tipus_nom TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS fitxers (
-            fitxer_id INTEGER PRIMARY KEY,
-            full_path TEXT NOT NULL,
-            tipus_id INTEGER NOT NULL REFERENCES tipus_fitxers
-        );
-
-        CREATE TABLE IF NOT EXISTS hashes (
-            hash_id INTEGER PRIMARY KEY,
-            short_hash_1mb UUID NOT NULL,
-            full_hash UUID NOT NULL
-        );
-        "#,
-    )
-    .execute(&pool)
-    .await?;
-    Ok(())
-}
-
-#[tokio::main]
-async fn main() -> Result<(), sqlx::Error> {
+async fn populate() -> Result<(), sqlx::Error> {
     // Create a connection pool
     let pool = SqlitePoolOptions::new()
         .max_connections(5)
         .connect("sqlite://dades.db")
         .await?;
-    setup(pool).await?;
 
-    /*
-    let account = sqlx::query("select *").fetch_all(&pool).await?;
-    dbg!(account);*/
+    setup(&pool).await?;
 
-    //println!("{account:?}");
+    let folder = "./fitxers_a_tractar";
+    for file in recurse_files(Path::new(folder))? {
+        let real_path = file.path();
+        let db_path = file.path().to_owned();
+        let db_path = db_path
+            .strip_prefix(folder)
+            .expect("Error intern: fitxer de la carpeta no està dins de la carpeta?");
+
+        inform(&format!("Tractant: {:?}", db_path));
+
+        let start = Instant::now();
+        let (short_hash, full_hash) = hashes_of(&real_path)?;
+        let end = Instant::now();
+        inform(&format!("Hash trobada, tardant: '{:?}'", end - start));
+
+        inform("Insertant a BD...");
+        insert_file(&pool, &real_path, db_path, short_hash, full_hash);
+    }
     Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<(), sqlx::Error> {
+    populate().await
 }

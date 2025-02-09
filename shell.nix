@@ -12,7 +12,7 @@ let
     sqlx-cli
     pkg-config
     libiconv openssl
-    sqlite
+    sqlite rlwrap
   ];
 in
 pkgs.mkShell {
