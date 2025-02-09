@@ -1,6 +1,6 @@
 # Recopilador
 
-Assumes (possible empty) file called `dades.db` exists at callsite
+Assumes (possible empty) sqlite database called `dades.db` exists at callsite
 
 ## Usage
 - `recopilador populate <folder>`: populate DB with files and hashes of recursive contents of `<folder>`
