@@ -28,7 +28,7 @@ async fn populate() -> Result<(), sqlx::Error> {
         inform(&format!("Hash trobada, tardant: '{:?}'", end - start));
 
         inform("Insertant a BD...");
-        insert_file(&pool, &real_path, db_path, short_hash, full_hash);
+        insert_file(&pool, &real_path, db_path, short_hash, full_hash).await?;
     }
     Ok(())
 }
