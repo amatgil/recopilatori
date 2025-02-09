@@ -6,3 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+#md5sum = "0.1.0"
+sqlx = { version = "0.8.3", features = ["sqlite", "runtime-tokio-native-tls", "macros", "derive", "uuid"] }
+tokio = { version = "1.43.0", features = ["full"] }

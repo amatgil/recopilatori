@@ -8,11 +8,11 @@ let
     rustfmt
     clippy
     mold
-    rustup # mostly for rustup doc
-
-    #wayland
-    #xorg.libX11
-    #xorg.libXcursor
+    rust-bin.stable.latest.default
+    sqlx-cli
+    pkg-config
+    libiconv openssl
+    sqlite
   ];
 in
 pkgs.mkShell {
