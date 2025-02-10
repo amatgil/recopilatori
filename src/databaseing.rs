@@ -88,7 +88,7 @@ pub async fn insert_file(
     Ok(())
 }
 
-fn files_are_equal(a: &Path, b: &Path) -> bool {
+pub fn files_are_equal(a: &Path, b: &Path) -> bool {
     todo!()
 }
 
@@ -105,7 +105,11 @@ pub async fn existeix(pool: &SqlitePool, p: &Path) -> Result<Vec<String>, sqlx::
         current_hash
     )
     .fetch_all(pool)
-    .await?;
+    .await?
+    .into_iter()
+    .map(|r| r.full_path)
+    .filter(|m| files_are_equal(p, &PathBuf::from(&m)))
+    .collect::<Vec<String>>();
 
-    Ok(matches.into_iter().map(|r| r.full_path).collect())
+    Ok(matches)
 }

@@ -8,9 +8,14 @@ use clap::*;
 #[derive(Subcommand, Debug)]
 enum Commands {
     /// Actualitza la base de dades (`./dades.db`) amb tots els fitxers continguts al `path_directori_font`
-    Populate { path_directori_font: String },
+    Populate {
+        path_directori_font: String,
+    },
     /// Comprova, per cada fitxer de `path_directori_unknown`, si existeix ja a la base de dades (`./dades.db`)
-    Exists { path_fitxers_unknown: String },
+    Exists {
+        path_fitxers_unknown: String,
+    },
+    ClearAllYesImVerySureNukeItAll,
 }
 
 #[derive(Parser, Debug)]
@@ -45,14 +50,14 @@ async fn populate(pool: &SqlitePool, folder: &str) -> Result<(), sqlx::Error> {
 async fn existance_check(pool: &SqlitePool, folder: &str) -> Result<(), sqlx::Error> {
     for file in recurse_files(&Path::new(&folder))? {
         let matches = existeix(pool, &file.path()).await?;
-        if matches.len() == 0 {
-            println!(
+        if matches.len() > 0 {
+            report(&format!(
                 "{}:\tDUPLICAT\t[{}]",
                 file.path().display(),
-                matches.join(",")
-            );
+                matches.join(", ")
+            ));
         } else {
-            println!("{}:\tNOU", file.path().display());
+            report(&format!("{}:\tNOU", file.path().display()));
         }
     }
     Ok(())
@@ -73,6 +78,7 @@ async fn main() -> Result<(), sqlx::Error> {
         Some(Commands::Exists {
             path_fitxers_unknown: p,
         }) => existance_check(&pool, &p).await?,
+        Some(Commands::ClearAllYesImVerySureNukeItAll) => clear_all(&pool).await?,
         None => {
             println!("T'has deixat la subcomanda (--help per veure-les)");
             std::process::exit(1);

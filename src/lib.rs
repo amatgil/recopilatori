@@ -27,6 +27,10 @@ pub fn inform(s: &str) {
     println!("INFO: {s}");
 }
 
+pub fn report(s: &str) {
+    println!("RESULTAT: {s}");
+}
+
 pub fn short_hash_of(file_contents: &[u8]) -> [u8; 16] {
     const SHORT_SIZE: usize = 1000000; // 1MB
     md5::compute(&file_contents[0..SHORT_SIZE.min(file_contents.len())])
