@@ -88,8 +88,10 @@ pub async fn insert_file(
     Ok(())
 }
 
-pub fn files_are_equal(a: &Path, b: &Path) -> bool {
-    todo!()
+pub fn files_are_equal(a: &Path, b: &Path) -> io::Result<bool> {
+    let contents_a = fs::read(a)?;
+    let contents_b = fs::read(b)?;
+    Ok(contents_a == contents_b)
 }
 
 /// Returns Strings that are paths (if the real one isn't uf8, it was lossily converted)
@@ -108,7 +110,7 @@ pub async fn existeix(pool: &SqlitePool, p: &Path) -> Result<Vec<String>, sqlx::
     .await?
     .into_iter()
     .map(|r| r.full_path)
-    .filter(|m| files_are_equal(p, &PathBuf::from(&m)))
+    .filter(|m| files_are_equal(p, &PathBuf::from(&m))?)
     .collect::<Vec<String>>();
 
     Ok(matches)
