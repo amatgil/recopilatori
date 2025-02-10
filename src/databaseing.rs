@@ -88,30 +88,31 @@ pub async fn insert_file(
     Ok(())
 }
 
-pub fn files_are_equal(a: &Path, b: &Path) -> io::Result<bool> {
-    let contents_a = fs::read(a)?;
-    let contents_b = fs::read(b)?;
-    Ok(contents_a == contents_b)
-}
-
 /// Returns Strings that are paths (if the real one isn't uf8, it was lossily converted)
-pub async fn existeix(pool: &SqlitePool, p: &Path) -> Result<Vec<String>, sqlx::Error> {
-    let current_hash = sqlx::types::Uuid::from_slice(&short_hash_of(&fs::read(p)?))
+pub async fn existeix(pool: &SqlitePool, new_p: &Path) -> Result<Vec<String>, sqlx::Error> {
+    let new_contents = fs::read(new_p)?;
+    let current_short_hash = sqlx::types::Uuid::from_slice(&short_hash_of(&new_contents))
         .expect("short_hash did not return valid uuid??");
-    let matches = sqlx::query!(
+
+    let possible_matches = sqlx::query!(
         r#"
-        SELECT f.full_path
+        SELECT f.fitxer_id, f.full_path
         FROM fitxers f, hashes h
         WHERE f.tipus_id = h.hash_id AND h.short_hash_1mb = ?
 "#,
-        current_hash
+        current_short_hash
     )
     .fetch_all(pool)
-    .await?
-    .into_iter()
-    .map(|r| r.full_path)
-    .filter(|m| files_are_equal(p, &PathBuf::from(&m))?)
-    .collect::<Vec<String>>();
+    .await?;
 
-    Ok(matches)
+    let mut r = vec![];
+    for m in possible_matches {
+        let preexisting_path = m.full_path;
+        let preexisting_content = fs::read(&preexisting_path)?;
+        if preexisting_content == new_contents {
+            r.push(preexisting_path);
+        }
+    }
+
+    Ok(r)
 }
