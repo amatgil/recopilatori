@@ -90,6 +90,8 @@ pub async fn insert_file(
 
 /// Returns Strings that are paths (if the real one isn't uf8, it was lossily converted)
 pub async fn existeix(pool: &SqlitePool, new_p: &Path) -> Result<Vec<String>, sqlx::Error> {
+    inform(&format!("Comprovant si '{}' existeix", new_p.display()));
+
     let new_contents = fs::read(new_p)?;
     let current_short_hash = sqlx::types::Uuid::from_slice(&short_hash_of(&new_contents))
         .expect("short_hash_of did not return valid uuid??");
@@ -105,6 +107,11 @@ pub async fn existeix(pool: &SqlitePool, new_p: &Path) -> Result<Vec<String>, sq
     .fetch_all(pool)
     .await?;
 
+    inform(&format!(
+        "{} possibles candidades found from short hash",
+        possible_matches.len()
+    ));
+
     let mut r = vec![];
     for m in possible_matches {
         let preexisting_path = m.full_path;
@@ -113,6 +120,11 @@ pub async fn existeix(pool: &SqlitePool, new_p: &Path) -> Result<Vec<String>, sq
             r.push(preexisting_path);
         }
     }
+
+    inform(&format!(
+        "{} of those possibles candidades matches file conents",
+        r.len()
+    ));
 
     Ok(r)
 }

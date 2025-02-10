@@ -24,7 +24,7 @@ pub fn recurse_files(dir: &Path) -> io::Result<Vec<DirEntry>> {
 }
 
 pub fn inform(s: &str) {
-    println!("INFO: {s}");
+    eprintln!("INFO: {s}");
 }
 
 pub fn report(s: &str) {
