@@ -56,16 +56,26 @@ async fn populate(
             ));
             continue;
         }
+        let file_contents: Vec<u8> = fs::read(&real_path)?;
 
         inform(&format!("Tractant: {:?}", db_path));
 
         let start = Instant::now();
-        let (short_hash, full_hash) = hashes_of(&real_path)?;
+        let (short_hash, full_hash) = hashes_of(&file_contents);
         let end = Instant::now();
         inform(&format!("Hash trobada, tardant: '{:?}'", end - start));
 
         inform("Insertant a BD...");
-        insert_file(&pool, &real_path, db_path, short_hash, full_hash, curr_time).await?;
+        insert_file(
+            &pool,
+            &real_path,
+            db_path,
+            short_hash,
+            full_hash,
+            file_contents.len() as i64,
+            curr_time,
+        )
+        .await?;
     }
 
     mark_not_seen_as_deleted(pool, start_time).await?;

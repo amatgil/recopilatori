@@ -51,6 +51,7 @@ pub async fn insert_file(
     db_path: &Path,
     short_hash: [u8; 16],
     full_hash: [u8; 16],
+    file_size: i64,
     scan_time: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
     let tipus_id = get_tipus_id_of(pool, real_path).await?;
@@ -61,12 +62,13 @@ pub async fn insert_file(
 
     let fitxer_query = sqlx::query!(
         r#"
-        INSERT OR IGNORE INTO fitxers (full_path, tipus_id, last_scanned, is_deleted)
-                         VALUES (?, ?, ?, FALSE);
+        INSERT OR IGNORE INTO fitxers (full_path, tipus_id, last_scanned, fitxer_size, is_deleted)
+                         VALUES (?, ?, ?, ?, FALSE);
         "#,
         db_path,
         tipus_id,
-        scan_time
+        scan_time,
+        file_size,
     )
     .execute(pool)
     .await?;

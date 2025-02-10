@@ -39,7 +39,6 @@ pub fn full_hash_of(file_contents: &[u8]) -> [u8; 16] {
     md5::compute(file_contents)
 }
 
-pub fn hashes_of(p: &PathBuf) -> io::Result<([u8; 16], [u8; 16])> {
-    let full_data: Vec<u8> = fs::read(p)?;
-    Ok((short_hash_of(&full_data), full_hash_of(&full_data)))
+pub fn hashes_of(full_data: &[u8]) -> ([u8; 16], [u8; 16]) {
+    (short_hash_of(&full_data), full_hash_of(&full_data))
 }

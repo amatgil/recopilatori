@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS fitxers (
     fitxer_id INTEGER PRIMARY KEY,
     full_path TEXT NOT NULL UNIQUE,
     tipus_id INTEGER REFERENCES tipus_fitxers,
+    fitxer_size INTEGER NOT NULL,
     last_scanned TEXT NOT NULL,
     is_deleted BOOLEAN
 );
