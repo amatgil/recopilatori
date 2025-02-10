@@ -9,20 +9,17 @@ pub struct TipusFitxer {
 
 pub async fn clear_all(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     inform("Deleting all data...");
-    for q in [
-        "DELETE FROM hashes;",
-        "DELETE FROM fitxers;",
-        "DELETE FROM tipus_fitxers",
-    ] {
-        sqlx::query(q).execute(pool).await?;
-    }
+    sqlx::query!("DELETE FROM hashes;").execute(pool).await?;
+    sqlx::query!("DELETE FROM fitxers;").execute(pool).await?;
+    sqlx::query!("DELETE FROM tipus_fitxers;")
+        .execute(pool)
+        .await?;
     Ok(())
 }
 
 pub async fn get_tipus_id_of(pool: &SqlitePool, path: &Path) -> Result<Option<i64>, sqlx::Error> {
     if let Some(ext) = path.extension() {
         let ext = ext.to_string_lossy();
-        dbg!(&ext);
         let q = sqlx::query!(
             "INSERT OR IGNORE INTO tipus_fitxers (tipus_nom) VALUES (?)",
             ext
