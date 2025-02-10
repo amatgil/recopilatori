@@ -1,7 +1,10 @@
 use recopilatori::*;
 use std::{fs, io, path::Path, time::Instant};
 
-use sqlx::sqlite::*;
+use sqlx::{
+    sqlite::*,
+    types::chrono::{self, DateTime, Utc},
+};
 
 use clap::*;
 
@@ -25,7 +28,11 @@ struct Cli {
 
 /// Make database reflect state of `folder`
 async fn populate(pool: &SqlitePool, folder: &str) -> Result<(), sqlx::Error> {
+    let start_time: DateTime<Utc> = Utc::now();
+
     for file in recurse_files(Path::new(folder))? {
+        let curr_time: DateTime<Utc> = Utc::now();
+
         let real_path = file.path();
         let db_path = file.path().to_owned();
         let db_path = db_path
@@ -40,8 +47,11 @@ async fn populate(pool: &SqlitePool, folder: &str) -> Result<(), sqlx::Error> {
         inform(&format!("Hash trobada, tardant: '{:?}'", end - start));
 
         inform("Insertant a BD...");
-        insert_file(&pool, &real_path, db_path, short_hash, full_hash).await?;
+        insert_file(&pool, &real_path, db_path, short_hash, full_hash, curr_time).await?;
     }
+
+    mark_not_seen_as_deleted(pool, start_time);
+
     Ok(())
 }
 

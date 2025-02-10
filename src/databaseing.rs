@@ -1,5 +1,8 @@
 use crate::*;
-use sqlx::*;
+use sqlx::{
+    types::chrono::{DateTime, Utc},
+    *,
+};
 
 #[derive(FromRow, Debug, Clone)]
 pub struct TipusFitxer {
@@ -48,6 +51,7 @@ pub async fn insert_file(
     db_path: &Path,
     short_hash: [u8; 16],
     full_hash: [u8; 16],
+    scan_time: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
     let tipus_id = get_tipus_id_of(pool, real_path).await?;
     dbg!(&real_path, &tipus_id);
@@ -58,11 +62,22 @@ pub async fn insert_file(
 
     let fitxer_query = sqlx::query!(
         r#"
-        INSERT OR IGNORE INTO fitxers (full_path, tipus_id)
-                         VALUES (?, ?)
-"#,
+        INSERT OR IGNORE INTO fitxers (full_path, tipus_id, last_scanned, is_deleted)
+                         VALUES (?, ?, ?, FALSE);
+        "#,
         db_path,
-        tipus_id
+        tipus_id,
+        scan_time
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query!(
+        r#"
+        UPDATE fitxers f SET f.last_scanned = ? WHERE f.full_path = ?;
+        "#,
+        scan_time,
+        db_path
     )
     .execute(pool)
     .await?;
@@ -72,7 +87,7 @@ pub async fn insert_file(
         sqlx::query!(
             r#"
         INSERT INTO hashes (hash_id, short_hash_1mb, full_hash)
-                         VALUES (?, ?, ?)
+                         VALUES (?, ?, ?);
 "#,
             hash_id,
             short_hash,
@@ -81,6 +96,22 @@ pub async fn insert_file(
         .execute(pool)
         .await?;
     }
+
+    Ok(())
+}
+
+pub async fn mark_not_seen_as_deleted(
+    pool: &SqlitePool,
+    original_time: DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        r#"
+        UPDATE fitxers f SET f.is_deleted = true WHERE f.last_scanned < ?;
+        "#,
+        original_time
+    )
+    .execute(pool)
+    .await?;
 
     Ok(())
 }

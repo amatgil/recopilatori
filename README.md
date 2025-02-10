@@ -25,11 +25,13 @@ CREATE TABLE IF NOT EXISTS tipus_fitxers (
 CREATE TABLE IF NOT EXISTS fitxers (
     fitxer_id INTEGER PRIMARY KEY,
     full_path TEXT NOT NULL UNIQUE,
-    tipus_id INTEGER REFERENCES tipus_fitxers
+    tipus_id INTEGER REFERENCES tipus_fitxers,
+    last_scanned TEXT NOT NULL,
+    is_deleted BOOLEAN
 );
 
 CREATE TABLE IF NOT EXISTS hashes (
-    hash_id PRIMARY KEY,
+    fitxer_id PRIMARY KEY REFERENCES fitxers,
     short_hash_1mb UUID NOT NULL,
     full_hash UUID NOT NULL
 );
