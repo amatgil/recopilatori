@@ -1,5 +1,5 @@
 use recopilatori::*;
-use std::{path::Path, time::Instant};
+use std::{fs, io, path::Path, time::Instant};
 
 use sqlx::sqlite::*;
 
@@ -23,6 +23,7 @@ struct Cli {
     command: Option<Commands>,
 }
 
+/// Make database reflect state of `folder`
 async fn populate(pool: &SqlitePool, folder: &str) -> Result<(), sqlx::Error> {
     for file in recurse_files(Path::new(folder))? {
         let real_path = file.path();
@@ -63,6 +64,18 @@ async fn existance_check(pool: &SqlitePool, folder: &str) -> Result<(), sqlx::Er
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
     let cli = Cli::parse();
+    let ignore_patterns: Vec<&str> = match fs::read_to_string("recopilatori.ignored") {
+        Ok(c) => c.split('\n').collect(),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {
+            inform("No `recopilatori.ignored` detected");
+            vec![]
+        }
+        e => {
+            e?;
+            unreachable!()
+        }
+    };
+
     let pool = SqlitePoolOptions::new()
         .max_connections(5)
         .connect("sqlite://dades.db")
@@ -71,7 +84,7 @@ async fn main() -> Result<(), sqlx::Error> {
     match cli.command {
         Some(Commands::Populate {
             path_directori_font: p,
-        }) => populate(&pool, &p).await?,
+        }) => populate(&pool, &p, ignore_patterns).await?,
         Some(Commands::Exists {
             path_fitxers_unknown: p,
         }) => existance_check(&pool, &p).await?,
