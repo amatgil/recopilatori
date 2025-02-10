@@ -21,15 +21,7 @@ struct Cli {
     command: Option<Commands>,
 }
 
-async fn populate(folder: &str) -> Result<(), sqlx::Error> {
-    // Create a connection pool
-    let pool = SqlitePoolOptions::new()
-        .max_connections(5)
-        .connect("sqlite://dades.db")
-        .await?;
-
-    setup(&pool).await?;
-
+async fn populate(pool: &SqlitePool, folder: &str) -> Result<(), sqlx::Error> {
     for file in recurse_files(Path::new(folder))? {
         let real_path = file.path();
         let db_path = file.path().to_owned();
@@ -50,28 +42,37 @@ async fn populate(folder: &str) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
+async fn existance_check(pool: &SqlitePool, folder: &str) -> Result<(), sqlx::Error> {
+    for file in recurse_files(&Path::new(&folder))? {
+        let matches = existeix(pool, &file.path()).await?;
+        if matches.len() == 0 {
+            println!(
+                "{}:\tDUPLICAT\t[{}]",
+                file.path().display(),
+                matches.join(",")
+            );
+        } else {
+            println!("{}:\tNOU", file.path().display());
+        }
+    }
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
     let cli = Cli::parse();
+    let pool = SqlitePoolOptions::new()
+        .max_connections(5)
+        .connect("sqlite://dades.db")
+        .await?;
+
     match cli.command {
         Some(Commands::Populate {
             path_directori_font: p,
-        }) => populate(&p).await?,
+        }) => populate(&pool, &p).await?,
         Some(Commands::Exists {
             path_fitxers_unknown: p,
-        }) => {
-            for file in recurse_files(&Path::new(&p))? {
-                if let Some(preexisting) = existeix(&file.path()).await? {
-                    println!(
-                        "{}:\tDUPLICAT\t{}",
-                        file.path().display(),
-                        preexisting.display()
-                    );
-                } else {
-                    println!("{}:\tNOU", file.path().display());
-                }
-            }
-        }
+        }) => existance_check(&pool, &p).await?,
         None => {
             println!("T'has deixat la subcomanda (--help per veure-les)");
             std::process::exit(1);

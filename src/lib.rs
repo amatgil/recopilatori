@@ -27,15 +27,15 @@ pub fn inform(s: &str) {
     println!("INFO: {s}");
 }
 
-pub fn hashes_of(p: &PathBuf) -> io::Result<([u8; 16], [u8; 16])> {
+pub fn short_hash_of(file_contents: &[u8]) -> [u8; 16] {
     const SHORT_SIZE: usize = 1000000; // 1MB
-    let full_data: Vec<u8> = fs::read(p)?;
-    let full_hash = md5::compute(&full_data);
+    md5::compute(&file_contents[0..SHORT_SIZE.min(file_contents.len())])
+}
+pub fn full_hash_of(file_contents: &[u8]) -> [u8; 16] {
+    md5::compute(file_contents)
+}
 
-    if full_data.len() <= SHORT_SIZE {
-        Ok((full_hash, full_hash))
-    } else {
-        let short_hash = md5::compute(&full_data[0..SHORT_SIZE]);
-        Ok((short_hash, full_hash))
-    }
+pub fn hashes_of(p: &PathBuf) -> io::Result<([u8; 16], [u8; 16])> {
+    let full_data: Vec<u8> = fs::read(p)?;
+    Ok((short_hash_of(&full_data), full_hash_of(&full_data)))
 }

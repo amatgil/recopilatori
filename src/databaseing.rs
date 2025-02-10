@@ -126,6 +126,24 @@ pub async fn insert_file(
     Ok(())
 }
 
-pub async fn existeix(p: &Path) -> Result<Option<PathBuf>, sqlx::Error> {
+fn files_are_equal(a: &Path, b: &Path) -> bool {
     todo!()
+}
+
+/// Returns Strings that are paths (if the real one isn't uf8, it was lossily converted)
+pub async fn existeix(pool: &SqlitePool, p: &Path) -> Result<Vec<String>, sqlx::Error> {
+    let current_hash = sqlx::types::Uuid::from_slice(&short_hash_of(&fs::read(p)?))
+        .expect("short_hash did not return valid uuid??");
+    let matches = sqlx::query!(
+        r#"
+        SELECT f.full_path
+        FROM fitxers f, hashes h
+        WHERE f.tipus_id = h.hash_id AND h.short_hash_1mb = ?
+"#,
+        current_hash
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(matches.into_iter().map(|r| r.full_path).collect())
 }
