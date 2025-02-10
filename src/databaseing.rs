@@ -1,6 +1,7 @@
 use crate::*;
 use sqlx::{
     types::chrono::{DateTime, Utc},
+    types::uuid::Uuid,
     *,
 };
 
@@ -122,16 +123,15 @@ pub async fn existeix(pool: &SqlitePool, new_p: &Path) -> Result<Vec<String>, sq
     inform(&format!("Comprovant si '{}' existeix", new_p.display()));
 
     let new_contents = fs::read(new_p)?;
-    let current_short_hash = sqlx::types::Uuid::from_slice(&short_hash_of(&new_contents))
-        .expect("short_hash_of did not return valid uuid??");
+    let new_file_size: i64 = new_contents.len() as i64;
 
     let possible_matches = sqlx::query!(
         r#"
-        SELECT f.fitxer_id, f.full_path
+        SELECT f.full_path, h.short_hash_1mb "short_hash_1mb: Uuid"
         FROM fitxers f, hashes h
-        WHERE f.fitxer_id = h.fitxer_id AND h.short_hash_1mb = ?
+        WHERE f.fitxer_id = h.fitxer_id AND f.fitxer_size = ?;
 "#,
-        current_short_hash
+        new_file_size
     )
     .fetch_all(pool)
     .await?;
@@ -141,19 +141,28 @@ pub async fn existeix(pool: &SqlitePool, new_p: &Path) -> Result<Vec<String>, sq
         possible_matches.len()
     ));
 
-    let mut r = vec![];
-    for m in possible_matches {
-        let preexisting_path = m.full_path;
-        let preexisting_content = fs::read(&preexisting_path)?;
-        if preexisting_content == new_contents {
-            r.push(preexisting_path);
+    if possible_matches.is_empty() {
+        inform("no equal files");
+        Ok(vec![])
+    } else {
+        let current_short_hash = sqlx::types::Uuid::from_slice(&short_hash_of(&new_contents))
+            .expect("short_hash_of did not return valid uuid??");
+
+        let mut r = vec![];
+        for m in possible_matches {
+            let preexisting_path = m.full_path;
+            let preexisting_shorthash = m.short_hash_1mb;
+            let preexisting_content = fs::read(&preexisting_path)?;
+            if preexisting_content == new_contents {
+                r.push(preexisting_path);
+            }
         }
+
+        inform(&format!(
+            "{} of those possibles candidades matches file size and contents",
+            r.len()
+        ));
+
+        Ok(r)
     }
-
-    inform(&format!(
-        "{} of those possibles candidades matches file conents",
-        r.len()
-    ));
-
-    Ok(r)
 }
