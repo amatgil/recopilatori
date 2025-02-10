@@ -137,7 +137,7 @@ pub async fn existeix(pool: &SqlitePool, new_p: &Path) -> Result<Vec<String>, sq
     .await?;
 
     inform(&format!(
-        "{} possibles candidades found from short hash",
+        "{} possibles candidades found from size",
         possible_matches.len()
     ));
 
@@ -152,14 +152,13 @@ pub async fn existeix(pool: &SqlitePool, new_p: &Path) -> Result<Vec<String>, sq
         for m in possible_matches {
             let preexisting_path = m.full_path;
             let preexisting_shorthash = m.short_hash_1mb;
-            let preexisting_content = fs::read(&preexisting_path)?;
-            if preexisting_content == new_contents {
+            if current_short_hash == preexisting_shorthash {
                 r.push(preexisting_path);
             }
         }
 
         inform(&format!(
-            "{} of those possibles candidades matches file size and contents",
+            "{} of those possibles candidades matches short hash and file size",
             r.len()
         ));
 
