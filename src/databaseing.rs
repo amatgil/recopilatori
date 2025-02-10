@@ -125,3 +125,7 @@ pub async fn insert_file(
 
     Ok(())
 }
+
+pub async fn existeix(p: &Path) -> Result<Option<PathBuf>, sqlx::Error> {
+    todo!()
+}

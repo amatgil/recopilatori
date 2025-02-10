@@ -7,7 +7,10 @@ use clap::*;
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    Populate { path_directori_a_tractar: String },
+    /// Actualitza la base de dades (`./dades.db`) amb tots els fitxers continguts al `path_directori_font`
+    Populate { path_directori_font: String },
+    /// Comprova, per cada fitxer de `path_directori_unknown`, si existeix ja a la base de dades (`./dades.db`)
+    Exists { path_fitxers_unknown: String },
 }
 
 #[derive(Parser, Debug)]
@@ -52,8 +55,23 @@ async fn main() -> Result<(), sqlx::Error> {
     let cli = Cli::parse();
     match cli.command {
         Some(Commands::Populate {
-            path_directori_a_tractar,
-        }) => populate(&path_directori_a_tractar).await?,
+            path_directori_font: p,
+        }) => populate(&p).await?,
+        Some(Commands::Exists {
+            path_fitxers_unknown: p,
+        }) => {
+            for file in recurse_files(&Path::new(&p))? {
+                if let Some(preexisting) = existeix(&file.path()).await? {
+                    println!(
+                        "{}:\tDUPLICAT\t{}",
+                        file.path().display(),
+                        preexisting.display()
+                    );
+                } else {
+                    println!("{}:\tNOU", file.path().display());
+                }
+            }
+        }
         None => {
             println!("T'has deixat la subcomanda (--help per veure-les)");
             std::process::exit(1);
