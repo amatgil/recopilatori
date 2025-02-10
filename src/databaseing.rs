@@ -7,44 +7,6 @@ pub struct TipusFitxer {
     pub tipus_nom: String,
 }
 
-pub async fn setup(pool: &SqlitePool) -> Result<(), sqlx::Error> {
-    inform("Creating tables if they don't exist...");
-    sqlx::query!(
-        r#"
-        CREATE TABLE IF NOT EXISTS tipus_fitxers (
-            tipus_id INTEGER PRIMARY KEY,
-            tipus_nom TEXT NOT NULL UNIQUE
-        );"#,
-    )
-    .execute(pool)
-    .await?;
-
-    sqlx::query!(
-        r#"
-        CREATE TABLE IF NOT EXISTS fitxers (
-            fitxer_id INTEGER PRIMARY KEY,
-            full_path TEXT NOT NULL UNIQUE,
-            tipus_id INTEGER REFERENCES tipus_fitxers
-        );"#,
-    )
-    .execute(pool)
-    .await?;
-
-    sqlx::query!(
-        r#"
-        CREATE TABLE IF NOT EXISTS hashes (
-            hash_id PRIMARY KEY,
-            short_hash_1mb UUID NOT NULL,
-            full_hash UUID NOT NULL
-        );
-        "#,
-    )
-    .execute(pool)
-    .await?;
-
-    Ok(())
-}
-
 pub async fn clear_all(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     inform("Deleting all data...");
     for q in [
