@@ -54,7 +54,6 @@ pub async fn insert_file(
     scan_time: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
     let tipus_id = get_tipus_id_of(pool, real_path).await?;
-    dbg!(&real_path, &tipus_id);
 
     let db_path = db_path.to_string_lossy();
     let short_hash = sqlx::types::Uuid::from_slice(&short_hash).expect("invalid hash provided");
@@ -74,7 +73,7 @@ pub async fn insert_file(
 
     sqlx::query!(
         r#"
-        UPDATE fitxers f SET f.last_scanned = ? WHERE f.full_path = ?;
+        UPDATE fitxers SET last_scanned = ? WHERE full_path = ?;
         "#,
         scan_time,
         db_path
@@ -86,7 +85,7 @@ pub async fn insert_file(
         let hash_id = fitxer_query.last_insert_rowid();
         sqlx::query!(
             r#"
-        INSERT INTO hashes (hash_id, short_hash_1mb, full_hash)
+        INSERT INTO hashes (fitxer_id, short_hash_1mb, full_hash)
                          VALUES (?, ?, ?);
 "#,
             hash_id,
@@ -106,7 +105,7 @@ pub async fn mark_not_seen_as_deleted(
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
         r#"
-        UPDATE fitxers f SET f.is_deleted = true WHERE f.last_scanned < ?;
+        UPDATE fitxers SET is_deleted = true WHERE last_scanned < ?;
         "#,
         original_time
     )
@@ -128,7 +127,7 @@ pub async fn existeix(pool: &SqlitePool, new_p: &Path) -> Result<Vec<String>, sq
         r#"
         SELECT f.fitxer_id, f.full_path
         FROM fitxers f, hashes h
-        WHERE f.tipus_id = h.hash_id AND h.short_hash_1mb = ?
+        WHERE f.fitxer_id = h.fitxer_id AND h.short_hash_1mb = ?
 "#,
         current_short_hash
     )

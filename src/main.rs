@@ -1,9 +1,10 @@
 use recopilatori::*;
+use regex::Regex;
 use std::{fs, io, path::Path, time::Instant};
 
 use sqlx::{
     sqlite::*,
-    types::chrono::{self, DateTime, Utc},
+    types::chrono::{DateTime, Utc},
 };
 
 use clap::*;
@@ -27,7 +28,11 @@ struct Cli {
 }
 
 /// Make database reflect state of `folder`
-async fn populate(pool: &SqlitePool, folder: &str) -> Result<(), sqlx::Error> {
+async fn populate(
+    pool: &SqlitePool,
+    folder: &str,
+    ignore_patterns: Vec<Regex>,
+) -> Result<(), sqlx::Error> {
     let start_time: DateTime<Utc> = Utc::now();
 
     for file in recurse_files(Path::new(folder))? {
@@ -38,6 +43,19 @@ async fn populate(pool: &SqlitePool, folder: &str) -> Result<(), sqlx::Error> {
         let db_path = db_path
             .strip_prefix(folder)
             .expect("Error intern: fitxer de la carpeta no està dins de la carpeta?");
+
+        if let Some(r) = ignore_patterns
+            .iter()
+            .filter(|r| r.is_match(&db_path.display().to_string()))
+            .next()
+        {
+            inform(&format!(
+                "Ignoring file '{}' (per regex '{}')",
+                db_path.display(),
+                r
+            ));
+            continue;
+        }
 
         inform(&format!("Tractant: {:?}", db_path));
 
@@ -50,7 +68,7 @@ async fn populate(pool: &SqlitePool, folder: &str) -> Result<(), sqlx::Error> {
         insert_file(&pool, &real_path, db_path, short_hash, full_hash, curr_time).await?;
     }
 
-    mark_not_seen_as_deleted(pool, start_time);
+    mark_not_seen_as_deleted(pool, start_time).await?;
 
     Ok(())
 }
@@ -74,15 +92,25 @@ async fn existance_check(pool: &SqlitePool, folder: &str) -> Result<(), sqlx::Er
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
     let cli = Cli::parse();
-    let ignore_patterns: Vec<&str> = match fs::read_to_string("recopilatori.ignored") {
-        Ok(c) => c.split('\n').collect(),
+    let ignore_patterns = match match fs::read_to_string("recopilatori.ignored") {
+        Ok(c) => c
+            .split('\n')
+            .filter(|s| !s.is_empty())
+            .map(|s| Regex::new(s))
+            .collect::<Result<Vec<Regex>, _>>(),
         Err(e) if e.kind() == io::ErrorKind::NotFound => {
             inform("No `recopilatori.ignored` detected");
-            vec![]
+            Ok(vec![])
         }
         e => {
             e?;
             unreachable!()
+        }
+    } {
+        Ok(p) => p,
+        Err(e) => {
+            println!("ERROR: regex invàlida al fitxer d'ignorats {e}");
+            std::process::exit(2);
         }
     };
 

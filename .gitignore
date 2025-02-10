@@ -4,3 +4,5 @@
 /.env
 /fitxers_a_tractar/
 .sqlx
+/recopilatori.ignored
+/dir_a_analitzar/
