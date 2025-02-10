@@ -92,7 +92,7 @@ pub async fn insert_file(
 pub async fn existeix(pool: &SqlitePool, new_p: &Path) -> Result<Vec<String>, sqlx::Error> {
     let new_contents = fs::read(new_p)?;
     let current_short_hash = sqlx::types::Uuid::from_slice(&short_hash_of(&new_contents))
-        .expect("short_hash did not return valid uuid??");
+        .expect("short_hash_of did not return valid uuid??");
 
     let possible_matches = sqlx::query!(
         r#"
