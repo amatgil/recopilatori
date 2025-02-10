@@ -8,13 +8,10 @@ use clap::*;
 #[derive(Subcommand, Debug)]
 enum Commands {
     /// Actualitza la base de dades (`./dades.db`) amb tots els fitxers continguts al `path_directori_font`
-    Populate {
-        path_directori_font: String,
-    },
+    Populate { path_directori_font: String },
     /// Comprova, per cada fitxer de `path_directori_unknown`, si existeix ja a la base de dades (`./dades.db`)
-    Exists {
-        path_fitxers_unknown: String,
-    },
+    Exists { path_fitxers_unknown: String },
+    /// Delete all data from the datable (DELETE FROM all tables)
     ClearAllYesImVerySureNukeItAll,
 }
 
