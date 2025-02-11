@@ -60,10 +60,13 @@ async fn populate(
 
         inform(&format!("Tractant: {:?}", db_path));
 
-        let start = Instant::now();
+        let start_hash = Instant::now();
         let (short_hash, full_hash) = hashes_of(&file_contents);
-        let end = Instant::now();
-        inform(&format!("Hash trobada, tardant: '{:?}'", end - start));
+        let end_hash = Instant::now();
+        inform(&format!(
+            "Hash trobada, tardant: '{:?}'",
+            end_hash - start_hash
+        ));
 
         inform("Insertant a BD...");
         insert_file(
@@ -76,15 +79,26 @@ async fn populate(
             curr_time,
         )
         .await?;
+
+        let delta = Utc::now() - curr_time;
+        inform(&format!(
+            "Processing file {} took '{ANSIITALIC}{delta}{ANSICLEAR}'",
+            db_path.display()
+        ));
+
+        eprintln!();
     }
 
+    inform("Marking those not seen as deleted...");
     mark_not_seen_as_deleted(pool, start_time).await?;
+    inform("Finished marking those not seen as deleted");
 
     Ok(())
 }
 
 async fn existance_check(pool: &SqlitePool, folder: &str) -> Result<(), sqlx::Error> {
     for file in recurse_files(&Path::new(&folder))? {
+        let start_time = Instant::now();
         let matches = existeix(pool, &file.path()).await?;
         if matches.len() > 0 {
             report(&format!(
@@ -98,6 +112,14 @@ async fn existance_check(pool: &SqlitePool, folder: &str) -> Result<(), sqlx::Er
                 file.path().display()
             ));
         }
+        let end_time = Instant::now();
+        inform(&format!(
+            "Checking existance of {} took '{ANSIITALIC}{:#?}{ANSICLEAR}'",
+            file.file_name().to_string_lossy(),
+            end_time - start_time
+        ));
+
+        eprintln!();
     }
     Ok(())
 }
