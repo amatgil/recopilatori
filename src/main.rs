@@ -40,9 +40,10 @@ async fn populate(
 
         let real_path = file.path();
         let db_path = file.path().to_owned();
-        let db_path = db_path
-            .strip_prefix(folder)
-            .expect("Error intern: fitxer de la carpeta no està dins de la carpeta?");
+        let db_path = db_path.strip_prefix(folder).unwrap_or_else(|_| {
+            error("Error intern: fitxer de la carpeta no està dins de la carpeta?");
+            process::exit(1)
+        });
 
         if let Some(r) = ignore_patterns
             .iter()
@@ -158,11 +159,16 @@ async fn main() -> Result<(), sqlx::Error> {
         error("Falta fitxer .env amb $DATABASE_URL (vegi README.md)");
         process::exit(2)
     });
+    inform(&format!("Found DATABASE_URL: {db_url}"));
 
     let pool = SqlitePoolOptions::new()
         .max_connections(5)
         .connect(&db_url)
-        .await?;
+        .await
+        .unwrap_or_else(|e| {
+            error(&format!("No s'ha pogut obrir la BD: '{e}"));
+            process::exit(1)
+        });
 
     match cli.command {
         Some(Commands::Populate {
