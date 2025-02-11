@@ -1,6 +1,11 @@
-use recopilatori::*;
+use recopilatori::{geoloc::update_geoloc, *};
 use regex::Regex;
-use std::{fs, io, path::Path, process, time::Instant};
+use std::{
+    fs, io,
+    path::{Path, PathBuf},
+    process,
+    time::Instant,
+};
 
 use sqlx::{
     sqlite::*,
@@ -15,6 +20,8 @@ enum Commands {
     Populate { path_directori_font: String },
     /// Comprova, per cada fitxer de `path_directori_unknown`, si existeix ja a la base de dades (`./dades.db`)
     Exists { path_fitxers_unknown: String },
+    /// Actualitza les coordenades dels fitxers que en contenen
+    Geoloc { path_directori_font: String },
     /// Delete all data from the datable (DELETE FROM all tables)
     ClearAllYesImVerySureNukeItAll,
 }
@@ -177,6 +184,9 @@ async fn main() -> Result<(), sqlx::Error> {
         Some(Commands::Exists {
             path_fitxers_unknown: p,
         }) => existance_check(&pool, &p).await?,
+        Some(Commands::Geoloc {
+            path_directori_font,
+        }) => update_geoloc(&pool, &PathBuf::from(&path_directori_font)).await?,
         Some(Commands::ClearAllYesImVerySureNukeItAll) => clear_all(&pool).await?,
         None => {
             println!("T'has deixat la subcomanda (--help per veure-les)");

@@ -36,4 +36,10 @@ CREATE TABLE IF NOT EXISTS hashes (
     short_hash_1mb UUID NOT NULL,
     full_hash UUID NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS coords (
+    fitxer_id PRIMARY KEY REFERENCES fitxers,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL
+);
 ```

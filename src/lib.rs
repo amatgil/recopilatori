@@ -1,4 +1,5 @@
 pub mod databaseing;
+pub mod geoloc;
 pub use databaseing::*;
 
 use md5;

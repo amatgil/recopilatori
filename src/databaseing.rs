@@ -63,7 +63,7 @@ pub async fn insert_file(
 
     let fitxer_query = sqlx::query!(
         r#"
-        INSERT OR IGNORE INTO fitxers (full_path, tipus_id, last_scanned, fitxer_size, is_deleted)
+        INSERT OR REPLACE INTO fitxers (full_path, tipus_id, last_scanned, fitxer_size, is_deleted)
                          VALUES (?, ?, ?, ?, FALSE);
         "#,
         db_path,

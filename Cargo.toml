@@ -9,6 +9,7 @@ edition = "2021"
 clap = { version = "4.5", features = ["derive"] }
 dotenv = "0.15.0"
 md5 = "0.1.0"
+nom-exif = "2.3.1"
 regex = "1.11.1"
 sqlx = { version = "0.8.3", features = ["sqlite", "runtime-tokio-native-tls", "macros", "derive", "uuid", "chrono"] }
 tokio = { version = "1.43.0", features = ["full"] }
