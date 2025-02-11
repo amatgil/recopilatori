@@ -7,6 +7,12 @@ use std::fs::DirEntry;
 use std::io;
 use std::path::{Path, PathBuf};
 
+pub const ANSIRED: &'static str = "\x1b[1;31m";
+pub const ANSIGREEN: &'static str = "\x1b[1;32m";
+pub const ANSIYELLOW: &'static str = "\x1b[1;33m";
+pub const ANSIBLUE: &'static str = "\x1b[1;34m";
+pub const ANSICLEAR: &'static str = "\x1b[0m";
+
 pub fn recurse_files(dir: &Path) -> io::Result<Vec<DirEntry>> {
     let mut r = vec![];
     if dir.is_dir() {
@@ -24,11 +30,11 @@ pub fn recurse_files(dir: &Path) -> io::Result<Vec<DirEntry>> {
 }
 
 pub fn inform(s: &str) {
-    eprintln!("INFO: {s}");
+    eprintln!("{ANSIBLUE}INFO:{ANSICLEAR}\t{s}");
 }
 
 pub fn report(s: &str) {
-    println!("RESULTAT: {s}");
+    println!("{ANSIRED}OUTPUT:{ANSICLEAR}\t{s}");
 }
 
 pub fn short_hash_of(file_contents: &[u8]) -> [u8; 16] {
