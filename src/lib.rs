@@ -36,7 +36,11 @@ pub fn inform(s: &str) {
 }
 
 pub fn report(s: &str) {
-    println!("{ANSIRED}OUTPUT:{ANSICLEAR}\t{s}");
+    println!("{ANSIGREEN}OUTPUT:{ANSICLEAR}\t{s}");
+}
+
+pub fn error(s: &str) {
+    eprintln!("{ANSIRED}ERROR:{ANSICLEAR}\t{s}");
 }
 
 pub fn short_hash_of(file_contents: &[u8]) -> [u8; 16] {

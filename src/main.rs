@@ -1,6 +1,6 @@
 use recopilatori::*;
 use regex::Regex;
-use std::{fs, io, path::Path, time::Instant};
+use std::{fs, io, path::Path, process, time::Instant};
 
 use sqlx::{
     sqlite::*,
@@ -127,31 +127,41 @@ async fn existance_check(pool: &SqlitePool, folder: &str) -> Result<(), sqlx::Er
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
     let cli = Cli::parse();
-    let ignore_patterns = match match fs::read_to_string("recopilatori.ignored") {
-        Ok(c) => c
-            .split('\n')
-            .filter(|s| !s.is_empty())
-            .map(|s| Regex::new(s))
-            .collect::<Result<Vec<Regex>, _>>(),
+    let ignore_patterns: Vec<Regex> = match fs::read_to_string("recopilatori.ignored") {
+        Ok(c) => {
+            let r = c
+                .split('\n')
+                .filter(|s| !s.is_empty())
+                .map(|s| Regex::new(s))
+                .collect::<Result<Vec<Regex>, _>>()
+                .unwrap_or_else(|e| {
+                    println!("ERROR: regex invàlida al fitxer d'ignorats: '{e}'");
+                    std::process::exit(2);
+                });
+
+            inform(&format!(
+                "recopilatori.ignored detectat amb '{}' patrons\n",
+                r.len()
+            ));
+            r
+        }
         Err(e) if e.kind() == io::ErrorKind::NotFound => {
-            inform("No `recopilatori.ignored` detected");
-            Ok(vec![])
+            inform("No `recopilatori.ignored` detected\n");
+            vec![]
         }
         e => {
             e?;
             unreachable!()
         }
-    } {
-        Ok(p) => p,
-        Err(e) => {
-            println!("ERROR: regex invàlida al fitxer d'ignorats {e}");
-            std::process::exit(2);
-        }
     };
+    let db_url = dotenv::var("DATABASE_URL").unwrap_or_else(|_| {
+        error("Falta fitxer .env amb $DATABASE_URL (vegi README.md)");
+        process::exit(2)
+    });
 
     let pool = SqlitePoolOptions::new()
         .max_connections(5)
-        .connect("sqlite://dades.db")
+        .connect(&db_url)
         .await?;
 
     match cli.command {
