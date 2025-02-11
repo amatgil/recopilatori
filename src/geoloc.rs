@@ -28,9 +28,10 @@ fn get_latlong(f: &Path) -> Result<Option<(f64, f64)>, nom_exif::Error> {
 }
 
 pub async fn update_geoloc(pool: &SqlitePool, dir: &Path) -> Result<(), sqlx::Error> {
-    let inner_paths = sqlx::query!("SELECT fitxer_id, full_path FROM fitxers;")
-        .fetch_all(pool)
-        .await?;
+    let inner_paths =
+        sqlx::query!("SELECT fitxer_id, full_path FROM fitxers WHERE is_deleted = FALSE;")
+            .fetch_all(pool)
+            .await?;
 
     for inner_rec in inner_paths {
         let inner_path = inner_rec.full_path;
