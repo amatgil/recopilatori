@@ -103,13 +103,13 @@ async fn existance_check(pool: &SqlitePool, folder: &str) -> Result<(), sqlx::Er
         let matches = existeix(pool, &file.path()).await?;
         if matches.len() > 0 {
             report(&format!(
-                "{};\t{ANSIYELLOW}DUPLICAT{ANSICLEAR};\t[{}]",
+                "{}\t{ANSIYELLOW}DUPLICAT{ANSICLEAR}\t[{}]",
                 file.path().display(),
                 matches.join(", ")
             ));
         } else {
             report(&format!(
-                "{}:\t{ANSIGREEN}NOU{ANSICLEAR}",
+                "{}\t{ANSIGREEN}NOU{ANSICLEAR}",
                 file.path().display()
             ));
         }

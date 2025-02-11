@@ -23,7 +23,7 @@ pub async fn clear_all(pool: &SqlitePool) -> Result<(), sqlx::Error> {
 
 pub async fn get_tipus_id_of(pool: &SqlitePool, path: &Path) -> Result<Option<i64>, sqlx::Error> {
     if let Some(ext) = path.extension() {
-        let ext = ext.to_string_lossy();
+        let ext = ext.to_string_lossy().to_ascii_lowercase();
         let q = sqlx::query!(
             "INSERT OR IGNORE INTO tipus_fitxers (tipus_nom) VALUES (?)",
             ext
