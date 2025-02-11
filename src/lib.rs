@@ -13,6 +13,7 @@ pub const ANSIYELLOW: &'static str = "\x1b[1;33m";
 pub const ANSIBLUE: &'static str = "\x1b[1;34m";
 pub const ANSICLEAR: &'static str = "\x1b[0m";
 
+/// 'dir' should be a directory, otherwise an empty vec will be returned
 pub fn recurse_files(dir: &Path) -> io::Result<Vec<DirEntry>> {
     let mut r = vec![];
     if dir.is_dir() {
