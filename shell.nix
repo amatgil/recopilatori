@@ -13,6 +13,7 @@ let
     pkg-config
     libiconv openssl
     sqlite rlwrap
+    openssl
   ];
 in
 pkgs.mkShell {
