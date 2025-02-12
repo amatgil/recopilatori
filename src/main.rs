@@ -166,7 +166,7 @@ async fn main() -> Result<(), sqlx::Error> {
         error("Falta fitxer .env amb $DATABASE_URL (vegi README.md)");
         process::exit(2)
     });
-    inform(&format!("Found DATABASE_URL: '{db_url}'"));
+    inform(&format!("Found DATABASE_URL: '{db_url}'\n"));
 
     let pool = SqlitePoolOptions::new()
         .max_connections(5)
