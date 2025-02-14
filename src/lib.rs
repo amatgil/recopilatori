@@ -46,14 +46,18 @@ pub fn error(s: &str) {
     eprintln!("{ANSIRED}ERROR:{ANSICLEAR}\t{s}");
 }
 
+#[must_use]
 pub fn short_hash_of(file_contents: &[u8]) -> [u8; 16] {
-    const SHORT_SIZE: usize = 1000000; // 1MB
+    const SHORT_SIZE: usize = 1_000_000; // 1MB
     md5::compute(&file_contents[0..SHORT_SIZE.min(file_contents.len())])
 }
+
+#[must_use]
 pub fn full_hash_of(file_contents: &[u8]) -> [u8; 16] {
     md5::compute(file_contents)
 }
 
+#[must_use]
 pub fn hashes_of(full_data: &[u8]) -> ([u8; 16], [u8; 16]) {
     let start_hash = Instant::now();
     let h = (short_hash_of(full_data), full_hash_of(full_data));

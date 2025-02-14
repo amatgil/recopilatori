@@ -1,6 +1,6 @@
 use sqlx::SqlitePool;
 
-use crate::*;
+use crate::{fs, inform, Path};
 use nom_exif::{ExifIter, LatLng, MediaParser, MediaSource, URational};
 
 /// Returns (lat, long)
@@ -13,7 +13,7 @@ fn get_latlong(f: &Path) -> Result<Option<(f64, f64)>, nom_exif::Error> {
         let exif: ExifIter = parser.parse(ms)?;
         match exif.parse_gps_info() {
             Ok(Some(info)) => {
-                let r_to_f = |r: URational| r.0 as f64 / r.1 as f64;
+                let r_to_f = |r: URational| f64::from(r.0) / f64::from(r.1);
                 let dms_to_f = |l: LatLng| r_to_f(l.0) + r_to_f(l.1) / 60.0 + r_to_f(l.2) / 3600.0;
                 let lat = dms_to_f(info.latitude);
                 let lon = dms_to_f(info.longitude);

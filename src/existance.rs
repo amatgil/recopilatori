@@ -1,5 +1,8 @@
-use crate::*;
-use sqlx::sqlite::*;
+use crate::{
+    existeix, inform, oopsie, recurse_files, report, DirEntry, ANSICLEAR, ANSIGREEN, ANSIITALIC,
+    ANSIYELLOW,
+};
+use sqlx::sqlite::SqlitePool;
 
 use std::{
     path::Path,
@@ -16,24 +19,30 @@ async fn file_bulk_exists_check(
         let start_time = Instant::now();
 
         let matches = existeix(&pool, &file.path()).await?;
-        if !matches.is_empty() {
+        if matches.is_empty() {
             report(&format!(
-                "{}\t{ANSIYELLOW}DUPLICAT{ANSICLEAR}\t[{}]",
+                "{}\t{}NOU{}",
                 file.path().display(),
-                matches.join(", ")
+                ANSIGREEN,
+                ANSICLEAR
             ));
         } else {
             report(&format!(
-                "{}\t{ANSIGREEN}NOU{ANSICLEAR}",
-                file.path().display()
+                "{}\t{}DUPLICAT{}\t[{}]",
+                file.path().display(),
+                ANSIYELLOW,
+                ANSICLEAR,
+                matches.join(", ")
             ));
         }
         let end_time = Instant::now();
 
         inform(&format!(
-            "Checking existance of {} took '{ANSIITALIC}{:#?}{ANSICLEAR}'\n",
+            "Checking existance of {} took '{}{:#?}{}'\n",
             file.file_name().to_string_lossy(),
-            end_time - start_time
+            ANSIITALIC,
+            end_time - start_time,
+            ANSICLEAR
         ));
     }
     Ok(())
@@ -47,7 +56,7 @@ pub async fn existance_check(pool: SqlitePool, folder: String) -> Result<(), sql
         for file in recurse_files(Path::new(&folder))? {
             tx.send(file).unwrap_or_else(|e| {
                 oopsie(&format!("Error sending to file reading thread: {e}"), 11)
-            })
+            });
         }
         Ok::<(), sqlx::Error>(())
     });

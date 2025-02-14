@@ -1,13 +1,13 @@
-use recopilatori::{geoloc::update_geoloc, *};
+use recopilatori::{
+    clear_all, existance::existance_check, geoloc::update_geoloc, inform, oopsie,
+    populating::populate,
+};
 use regex::Regex;
 use std::{fs, io, path::PathBuf};
 
-use existance::*;
-use populating::*;
+use sqlx::sqlite::SqlitePoolOptions;
 
-use sqlx::sqlite::*;
-
-use clap::*;
+use clap::{Parser, Subcommand};
 
 #[derive(Subcommand, Debug)]
 enum Commands {
