@@ -38,17 +38,17 @@ struct Cli {
 
 /// Make database reflect state of `folder`
 async fn populate(
-    pool: &SqlitePool,
-    folder: &str,
+    pool: SqlitePool,
+    folder: String,
     ignore_patterns: Vec<Regex>,
 ) -> Result<(), sqlx::Error> {
     let start_time: DateTime<Utc> = Utc::now();
     let (tx, rx) = mpsc::channel();
 
     async fn hash_files(
-        pool: &SqlitePool,
+        pool: SqlitePool,
         rx: mpsc::Receiver<fs::DirEntry>,
-        folder: &str,
+        folder: String,
         ignore_patterns: Vec<Regex>,
         start_time: DateTime<Utc>,
     ) -> Result<(), sqlx::Error> {
@@ -57,7 +57,7 @@ async fn populate(
 
             let real_path = file.path();
             let db_path = file.path().to_owned();
-            let db_path = db_path.strip_prefix(folder).unwrap_or_else(|_| {
+            let db_path = db_path.strip_prefix(&folder).unwrap_or_else(|_| {
                 error("Error intern: fitxer de la carpeta no està dins de la carpeta?");
                 process::exit(1)
             });
@@ -107,21 +107,27 @@ async fn populate(
             eprintln!();
 
             inform("Marking those not seen as deleted...");
-            mark_not_seen_as_deleted(pool, &start_time).await?;
+            mark_not_seen_as_deleted(pool.clone(), &start_time).await?;
             inform("Finished marking those not seen as deleted");
         }
         Ok::<(), sqlx::Error>(())
     }
 
-    let hasher_handle =
-        tokio::spawn(hash_files(pool, rx, folder, ignore_patterns, start_time)).await;
+    let hasher_handle = tokio::spawn(hash_files(
+        pool,
+        rx,
+        folder.clone(),
+        ignore_patterns,
+        start_time,
+    ))
+    .await;
 
     let reader_handle = thread::spawn(move || {
-        for file in recurse_files(Path::new(folder))? {
+        for file in recurse_files(Path::new(&folder))? {
             match tx.send(file) {
                 Ok(()) => {}
                 Err(e) => {
-                    error("Error sending to hashing thread: {e}");
+                    error(&format!("Error sending to hashing thread: {e}"));
                     std::process::exit(1);
                 }
             };
@@ -129,7 +135,13 @@ async fn populate(
         Ok::<(), sqlx::Error>(())
     });
 
-    reader_handle.join();
+    match reader_handle.join() {
+        Ok(r) => r?,
+        Err(_) => {
+            error(&format!("Error llegint fitxers!"));
+            std::process::exit(2);
+        }
+    };
     match hasher_handle {
         Ok(h) => h?,
         Err(e) => {
@@ -217,7 +229,7 @@ async fn main() -> Result<(), sqlx::Error> {
     match cli.command {
         Some(Commands::Populate {
             path_directori_font: p,
-        }) => populate(&pool, &p, ignore_patterns).await?,
+        }) => populate(pool, p, ignore_patterns).await?,
         Some(Commands::Exists {
             path_fitxers_unknown: p,
         }) => existance_check(&pool, &p).await?,

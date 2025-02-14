@@ -103,7 +103,7 @@ pub async fn insert_file(
 }
 
 pub async fn mark_not_seen_as_deleted(
-    pool: &SqlitePool,
+    pool: SqlitePool,
     original_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
@@ -112,7 +112,7 @@ pub async fn mark_not_seen_as_deleted(
         "#,
         original_time
     )
-    .execute(pool)
+    .execute(&pool)
     .await?;
 
     Ok(())
