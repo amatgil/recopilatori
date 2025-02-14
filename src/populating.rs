@@ -1,13 +1,6 @@
 use crate::*;
 use regex::Regex;
-use std::{
-    fs, io,
-    path::{Path, PathBuf},
-    process,
-    sync::mpsc,
-    thread,
-    time::Instant,
-};
+use std::{fs, path::Path, process, sync::mpsc, thread};
 
 use sqlx::{
     sqlite::*,
@@ -23,7 +16,7 @@ pub async fn populate(
     let start_time: DateTime<Utc> = Utc::now();
     let (tx, rx) = mpsc::channel();
 
-    async fn hash_files(
+    async fn bulk_insert_files(
         pool: SqlitePool,
         rx: mpsc::Receiver<fs::DirEntry>,
         folder: String,
@@ -54,17 +47,9 @@ pub async fn populate(
             }
             let file_contents: Vec<u8> = fs::read(&real_path)?;
 
-            inform(&format!("Tractant: {:?}", db_path));
-
-            let start_hash = Instant::now();
+            inform(&format!("Buscant la hash de: {:?}", db_path));
             let (short_hash, full_hash) = hashes_of(&file_contents);
-            let end_hash = Instant::now();
-            inform(&format!(
-                "Hash trobada, tardant: '{:?}'",
-                end_hash - start_hash
-            ));
 
-            inform("Insertant a BD...");
             insert_file(
                 &pool,
                 &real_path,
@@ -78,20 +63,16 @@ pub async fn populate(
 
             let delta = Utc::now() - curr_time;
             inform(&format!(
-                "Processing file {} took '{ANSIITALIC}{delta}{ANSICLEAR}'",
+                "Processing file {} took '{ANSIITALIC}{delta}{ANSICLEAR}'\n",
                 db_path.display()
             ));
 
-            eprintln!();
-
-            inform("Marking those not seen as deleted...");
             mark_not_seen_as_deleted(pool.clone(), &start_time).await?;
-            inform("Finished marking those not seen as deleted");
         }
         Ok::<(), sqlx::Error>(())
     }
 
-    let hasher_handle = tokio::spawn(hash_files(
+    let bulk_insertion_handle = tokio::spawn(bulk_insert_files(
         pool,
         rx,
         folder.clone(),
@@ -102,13 +83,10 @@ pub async fn populate(
 
     let reader_handle = thread::spawn(move || {
         for file in recurse_files(Path::new(&folder))? {
-            match tx.send(file) {
-                Ok(()) => {}
-                Err(e) => {
-                    error(&format!("Error sending to hashing thread: {e}"));
-                    std::process::exit(1);
-                }
-            };
+            tx.send(file).unwrap_or_else(|e| {
+                error(&format!("Error sending to hashing thread: {e}"));
+                std::process::exit(1);
+            })
         }
         Ok::<(), sqlx::Error>(())
     });
@@ -120,10 +98,11 @@ pub async fn populate(
             std::process::exit(2);
         }
     };
-    match hasher_handle {
+
+    match bulk_insertion_handle {
         Ok(h) => h?,
         Err(e) => {
-            error(&format!("Error fent hash!: {e}"));
+            error(&format!("Error fent les insercions!: {e}"));
             std::process::exit(2);
         }
     }

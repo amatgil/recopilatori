@@ -55,6 +55,7 @@ pub async fn insert_file(
     file_size: i64,
     scan_time: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
+    inform("Insertant a BD...");
     let tipus_id = get_tipus_id_of(pool, real_path).await?;
 
     let db_path = db_path.to_string_lossy();
@@ -106,6 +107,7 @@ pub async fn mark_not_seen_as_deleted(
     pool: SqlitePool,
     original_time: &DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
+    inform("Marking those not seen as deleted...");
     sqlx::query!(
         r#"
         UPDATE fitxers SET is_deleted = true WHERE last_scanned < ?;
@@ -114,6 +116,7 @@ pub async fn mark_not_seen_as_deleted(
     )
     .execute(&pool)
     .await?;
+    inform("Finished marking those not seen as deleted");
 
     Ok(())
 }

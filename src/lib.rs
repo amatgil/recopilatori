@@ -9,6 +9,7 @@ use std::fs;
 use std::fs::DirEntry;
 use std::io;
 use std::path::Path;
+use std::time::Instant;
 
 pub const ANSIRED: &'static str = "\x1b[1;31m";
 pub const ANSIGREEN: &'static str = "\x1b[1;32m";
@@ -55,5 +56,13 @@ pub fn full_hash_of(file_contents: &[u8]) -> [u8; 16] {
 }
 
 pub fn hashes_of(full_data: &[u8]) -> ([u8; 16], [u8; 16]) {
-    (short_hash_of(&full_data), full_hash_of(&full_data))
+    let start_hash = Instant::now();
+    let h = (short_hash_of(&full_data), full_hash_of(&full_data));
+    let end_hash = Instant::now();
+
+    inform(&format!(
+        "Hash trobada, tardant: '{:?}'",
+        end_hash - start_hash
+    ));
+    h
 }

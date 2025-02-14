@@ -1,21 +1,11 @@
 use recopilatori::{geoloc::update_geoloc, *};
 use regex::Regex;
-use std::{
-    fs, io,
-    path::{Path, PathBuf},
-    process,
-    sync::mpsc,
-    thread,
-    time::Instant,
-};
+use std::{fs, io, path::PathBuf, process};
 
 use existance::*;
 use populating::*;
 
-use sqlx::{
-    sqlite::*,
-    types::chrono::{DateTime, Utc},
-};
+use sqlx::sqlite::*;
 
 use clap::*;
 
@@ -90,7 +80,7 @@ async fn main() -> Result<(), sqlx::Error> {
         }) => populate(pool, p, ignore_patterns).await?,
         Some(Commands::Exists {
             path_fitxers_unknown: p,
-        }) => existance_check(&pool, &p).await?,
+        }) => existance_check(pool, p).await?,
         Some(Commands::Geoloc {
             path_directori_font,
         }) => update_geoloc(&pool, &PathBuf::from(&path_directori_font)).await?,
