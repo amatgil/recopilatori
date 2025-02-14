@@ -1,6 +1,6 @@
 use recopilatori::{geoloc::update_geoloc, *};
 use regex::Regex;
-use std::{fs, io, path::PathBuf, process};
+use std::{fs, io, path::PathBuf};
 
 use existance::*;
 use populating::*;

@@ -1,6 +1,6 @@
 use crate::*;
 use regex::Regex;
-use std::{fs, path::Path, process, sync::mpsc, thread};
+use std::{fs, path::Path, sync::mpsc, thread};
 
 use sqlx::{
     sqlite::*,

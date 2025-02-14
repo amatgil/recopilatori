@@ -42,15 +42,15 @@ async fn file_bulk_exists_check(
 pub async fn existance_check(pool: SqlitePool, folder: String) -> Result<(), sqlx::Error> {
     let (tx, rx) = mpsc::channel();
 
+    let checker_handle = tokio::spawn(file_bulk_exists_check(pool, rx)).await;
     let reader_handle = thread::spawn(move || {
         for file in recurse_files(Path::new(&folder))? {
-            tx.send(file)
-                .unwrap_or_else(|e| oopsie(&format!("Error sending to hashing thread: {e}"), 11))
+            tx.send(file).unwrap_or_else(|e| {
+                oopsie(&format!("Error sending to file reading thread: {e}"), 11)
+            })
         }
         Ok::<(), sqlx::Error>(())
     });
-
-    let checker_handle = tokio::spawn(file_bulk_exists_check(pool, rx)).await;
 
     match checker_handle {
         Ok(c) => c?,
