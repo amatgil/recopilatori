@@ -40,8 +40,10 @@ async fn main() -> Result<(), sqlx::Error> {
                 .map(|s| Regex::new(s))
                 .collect::<Result<Vec<Regex>, _>>()
                 .unwrap_or_else(|e| {
-                    println!("ERROR: regex invàlida al fitxer d'ignorats: '{e}'");
-                    std::process::exit(2);
+                    oopsie(
+                        &format!("ERROR: regex invàlida al fitxer d'ignorats: '{e}'",),
+                        1,
+                    )
                 });
 
             inform(&format!(
@@ -59,20 +61,15 @@ async fn main() -> Result<(), sqlx::Error> {
             unreachable!()
         }
     };
-    let db_url = dotenv::var("DATABASE_URL").unwrap_or_else(|_| {
-        error("Falta fitxer .env amb $DATABASE_URL (vegi README.md)");
-        process::exit(2)
-    });
+    let db_url = dotenv::var("DATABASE_URL")
+        .unwrap_or_else(|_| oopsie("Falta fitxer .env amb $DATABASE_URL (vegi README.md)", 2));
     inform(&format!("Found DATABASE_URL: '{db_url}'\n"));
 
     let pool = SqlitePoolOptions::new()
         .max_connections(5)
         .connect(&db_url)
         .await
-        .unwrap_or_else(|e| {
-            error(&format!("No s'ha pogut obrir la BD: '{e}"));
-            process::exit(1)
-        });
+        .unwrap_or_else(|e| oopsie(&format!("No s'ha pogut obrir la BD: '{e}"), 1));
 
     match cli.command {
         Some(Commands::Populate {
@@ -85,10 +82,7 @@ async fn main() -> Result<(), sqlx::Error> {
             path_directori_font,
         }) => update_geoloc(&pool, &PathBuf::from(&path_directori_font)).await?,
         Some(Commands::ClearAllYesImVerySureNukeItAll) => clear_all(&pool).await?,
-        None => {
-            println!("T'has deixat la subcomanda (--help per veure-les)");
-            std::process::exit(1);
-        }
+        None => oopsie("T'has deixat la subcomanda (--help per veure-les)", 1),
     }
     Ok(())
 }

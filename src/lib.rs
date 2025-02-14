@@ -66,3 +66,8 @@ pub fn hashes_of(full_data: &[u8]) -> ([u8; 16], [u8; 16]) {
     ));
     h
 }
+
+pub fn oopsie(s: &str, code: i32) -> ! {
+    error(s);
+    std::process::exit(code);
+}

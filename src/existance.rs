@@ -44,10 +44,8 @@ pub async fn existance_check(pool: SqlitePool, folder: String) -> Result<(), sql
 
     let reader_handle = thread::spawn(move || {
         for file in recurse_files(Path::new(&folder))? {
-            tx.send(file).unwrap_or_else(|e| {
-                error(&format!("Error sending to hashing thread: {e}"));
-                std::process::exit(1);
-            })
+            tx.send(file)
+                .unwrap_or_else(|e| oopsie(&format!("Error sending to hashing thread: {e}"), 11))
         }
         Ok::<(), sqlx::Error>(())
     });
@@ -56,18 +54,12 @@ pub async fn existance_check(pool: SqlitePool, folder: String) -> Result<(), sql
 
     match checker_handle {
         Ok(c) => c?,
-        Err(e) => {
-            error(&format!("Error comprovant si el fitxer existi: '{e}'"));
-            std::process::exit(2);
-        }
+        Err(e) => oopsie(&format!("Error comprovant si el fitxer existi: '{e}'"), 11),
     };
 
     match reader_handle.join() {
         Ok(r) => r?,
-        Err(_) => {
-            error(&format!("Error llegint fitxers!"));
-            std::process::exit(2);
-        }
+        Err(_) => oopsie("Error llegint fitxers!", 1),
     };
 
     Ok(())

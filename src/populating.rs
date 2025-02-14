@@ -29,8 +29,10 @@ pub async fn populate(
             let real_path = file.path();
             let db_path = file.path().to_owned();
             let db_path = db_path.strip_prefix(&folder).unwrap_or_else(|_| {
-                error("Error intern: fitxer de la carpeta no està dins de la carpeta?");
-                process::exit(1)
+                oopsie(
+                    "Error intern: fitxer de la carpeta no està dins de la carpeta?",
+                    1,
+                )
             });
 
             if let Some(r) = ignore_patterns
@@ -83,28 +85,20 @@ pub async fn populate(
 
     let reader_handle = thread::spawn(move || {
         for file in recurse_files(Path::new(&folder))? {
-            tx.send(file).unwrap_or_else(|e| {
-                error(&format!("Error sending to hashing thread: {e}"));
-                std::process::exit(1);
-            })
+            tx.send(file)
+                .unwrap_or_else(|e| oopsie(&format!("Error sending to hashing thread: {e}"), 1));
         }
         Ok::<(), sqlx::Error>(())
     });
 
     match reader_handle.join() {
         Ok(r) => r?,
-        Err(_) => {
-            error(&format!("Error llegint fitxers!"));
-            std::process::exit(2);
-        }
+        Err(_) => oopsie("Error llegint fitxers!", 2),
     };
 
     match bulk_insertion_handle {
         Ok(h) => h?,
-        Err(e) => {
-            error(&format!("Error fent les insercions!: {e}"));
-            std::process::exit(2);
-        }
+        Err(e) => oopsie(&format!("Error fent les insercions!: {e}"), 2),
     }
 
     Ok(())
