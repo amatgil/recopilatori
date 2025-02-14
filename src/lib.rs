@@ -4,19 +4,18 @@ pub mod geoloc;
 pub mod populating;
 pub use databaseing::*;
 
-use md5;
 use std::fs;
 use std::fs::DirEntry;
 use std::io;
 use std::path::Path;
 use std::time::Instant;
 
-pub const ANSIRED: &'static str = "\x1b[1;31m";
-pub const ANSIGREEN: &'static str = "\x1b[1;32m";
-pub const ANSIYELLOW: &'static str = "\x1b[1;33m";
-pub const ANSIBLUE: &'static str = "\x1b[1;34m";
-pub const ANSIITALIC: &'static str = "\x1b[3m";
-pub const ANSICLEAR: &'static str = "\x1b[0m";
+pub const ANSIRED: &str = "\x1b[1;31m";
+pub const ANSIGREEN: &str = "\x1b[1;32m";
+pub const ANSIYELLOW: &str = "\x1b[1;33m";
+pub const ANSIBLUE: &str = "\x1b[1;34m";
+pub const ANSIITALIC: &str = "\x1b[3m";
+pub const ANSICLEAR: &str = "\x1b[0m";
 
 /// 'dir' should be a directory, otherwise an empty vec will be returned
 pub fn recurse_files(dir: &Path) -> io::Result<Vec<DirEntry>> {
@@ -57,7 +56,7 @@ pub fn full_hash_of(file_contents: &[u8]) -> [u8; 16] {
 
 pub fn hashes_of(full_data: &[u8]) -> ([u8; 16], [u8; 16]) {
     let start_hash = Instant::now();
-    let h = (short_hash_of(&full_data), full_hash_of(&full_data));
+    let h = (short_hash_of(full_data), full_hash_of(full_data));
     let end_hash = Instant::now();
 
     inform(&format!(

@@ -16,7 +16,7 @@ async fn file_bulk_exists_check(
         let start_time = Instant::now();
 
         let matches = existeix(&pool, &file.path()).await?;
-        if matches.len() > 0 {
+        if !matches.is_empty() {
             report(&format!(
                 "{}\t{ANSIYELLOW}DUPLICAT{ANSICLEAR}\t[{}]",
                 file.path().display(),

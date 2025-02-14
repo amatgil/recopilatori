@@ -37,7 +37,7 @@ async fn main() -> Result<(), sqlx::Error> {
             let r = c
                 .split('\n')
                 .filter(|s| !s.is_empty())
-                .map(|s| Regex::new(s))
+                .map(Regex::new)
                 .collect::<Result<Vec<Regex>, _>>()
                 .unwrap_or_else(|e| {
                     oopsie(

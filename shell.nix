@@ -6,7 +6,6 @@ let
   packages = with pkgs; [
     rust-analyzer
     rustfmt
-    clippy
     mold
     rust-bin.stable.latest.default
     sqlx-cli

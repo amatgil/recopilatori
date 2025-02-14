@@ -35,7 +35,7 @@ pub async fn update_geoloc(pool: &SqlitePool, dir: &Path) -> Result<(), sqlx::Er
 
     for inner_rec in inner_paths {
         let inner_path = inner_rec.full_path;
-        let real_path = dir.join(&Path::new(&inner_path));
+        let real_path = dir.join(Path::new(&inner_path));
         inform(&format!(
             "Looking for metadata of {inner_path} ({})",
             real_path.display()

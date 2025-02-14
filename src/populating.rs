@@ -37,8 +37,7 @@ pub async fn populate(
 
             if let Some(r) = ignore_patterns
                 .iter()
-                .filter(|r| r.is_match(&db_path.display().to_string()))
-                .next()
+                .find(|r| r.is_match(&db_path.display().to_string()))
             {
                 inform(&format!(
                     "Ignoring file '{}' (per regex '{}')",
