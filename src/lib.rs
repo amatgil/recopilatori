@@ -17,21 +17,34 @@ pub const ANSIBLUE: &str = "\x1b[1;34m";
 pub const ANSIITALIC: &str = "\x1b[3m";
 pub const ANSICLEAR: &str = "\x1b[0m";
 
+pub const MAX_ALLOWED_OPEN_FILE_COUNT: usize = 1_000_000;
+
+fn get_open_file_count() -> io::Result<usize> {
+    let entries = fs::read_dir("/proc/self/fd")?;
+
+    Ok(entries
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| entry.file_name() != "." && entry.file_name() != "..")
+        .count())
+}
 /// 'dir' should be a directory, otherwise an empty vec will be returned
 pub fn recurse_files(dir: &Path) -> io::Result<Vec<DirEntry>> {
-    let mut r = vec![];
-    if dir.is_dir() {
-        for entry in fs::read_dir(dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            if path.is_dir() {
-                r.append(&mut recurse_files(&path)?);
-            } else {
-                r.push(entry);
+    if get_open_file_count().unwrap() < MAX_ALLOWED_OPEN_FILE_COUNT {
+        let mut r = vec![];
+        if dir.is_dir() {
+            for entry in fs::read_dir(dir)? {
+                let entry = entry?;
+                let path = entry.path();
+                if path.is_dir() {
+                    r.append(&mut recurse_files(&path)?);
+                } else {
+                    r.push(entry);
+                }
             }
         }
+        Ok(r)
+    } else {
     }
-    Ok(r)
 }
 
 pub fn inform(s: &str) {
