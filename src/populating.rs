@@ -3,7 +3,13 @@ use crate::{
     ANSIITALIC,
 };
 use regex::Regex;
-use std::{fs, path::Path, sync::mpsc, thread};
+use std::{
+    collections::VecDeque,
+    fs::{self, DirEntry},
+    path::Path,
+    sync::{mpsc, Arc, Mutex},
+    thread,
+};
 
 use sqlx::{
     sqlite::SqlitePool,
@@ -12,12 +18,16 @@ use sqlx::{
 
 async fn bulk_insert_files(
     pool: SqlitePool,
-    rx: mpsc::Receiver<fs::DirEntry>,
+    queue: Arc<Mutex<VecDeque<DirEntry>>>,
     folder: String,
     ignore_patterns: Vec<Regex>,
     start_time: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
-    while let Ok(file) = rx.recv() {
+    // When we run out of files, the lock will drop
+    while let Some(file) = {
+        let mut q = queue.lock().unwrap();
+        q.pop_front()
+    } {
         let curr_time: DateTime<Utc> = Utc::now();
 
         let real_path = file.path();
@@ -74,11 +84,11 @@ pub async fn populate(
     ignore_patterns: Vec<Regex>,
 ) -> Result<(), sqlx::Error> {
     let start_time: DateTime<Utc> = Utc::now();
-    let (tx, rx) = mpsc::channel();
+    let queue = Arc::new(Mutex::new(VecDeque::new()));
 
     let bulk_insertion_handle = tokio::spawn(bulk_insert_files(
         pool,
-        rx,
+        queue.clone(),
         folder.clone(),
         ignore_patterns,
         start_time,
@@ -86,10 +96,7 @@ pub async fn populate(
     .await;
 
     let reader_handle = thread::spawn(move || {
-        for file in recurse_files(Path::new(&folder))? {
-            tx.send(file)
-                .unwrap_or_else(|e| oopsie(&format!("Error sending to hashing thread: {e}"), 1));
-        }
+        recurse_files(Path::new(&folder), queue.clone())?;
         Ok::<(), sqlx::Error>(())
     });
 

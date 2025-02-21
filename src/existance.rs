@@ -53,12 +53,15 @@ pub async fn existance_check(pool: SqlitePool, folder: String) -> Result<(), sql
 
     let checker_handle = tokio::spawn(file_bulk_exists_check(pool, rx)).await;
     let reader_handle = thread::spawn(move || {
+        /*
         for file in recurse_files(Path::new(&folder))? {
             tx.send(file).unwrap_or_else(|e| {
                 oopsie(&format!("Error sending to file reading thread: {e}"), 11)
             });
         }
         Ok::<(), sqlx::Error>(())
+         */
+        todo!()
     });
 
     match checker_handle {
@@ -67,7 +70,7 @@ pub async fn existance_check(pool: SqlitePool, folder: String) -> Result<(), sql
     };
 
     match reader_handle.join() {
-        Ok(r) => r?,
+        Ok(()) => {}
         Err(_) => oopsie("Error llegint fitxers!", 1),
     };
 

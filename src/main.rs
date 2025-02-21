@@ -1,6 +1,6 @@
 use recopilatori::{
-    clear_all, existance::existance_check, geoloc::update_geoloc, inform, oopsie,
-    populating::populate,
+    clear_all, existance::existance_check, geoloc::update_geoloc, get_ignore_patterns, inform,
+    oopsie, populating::populate,
 };
 use regex::Regex;
 use std::{fs, io, path::PathBuf};
@@ -32,35 +32,7 @@ struct Cli {
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
     let cli = Cli::parse();
-    let ignore_patterns: Vec<Regex> = match fs::read_to_string("recopilatori.ignored") {
-        Ok(c) => {
-            let r = c
-                .split('\n')
-                .filter(|s| !s.is_empty())
-                .map(Regex::new)
-                .collect::<Result<Vec<Regex>, _>>()
-                .unwrap_or_else(|e| {
-                    oopsie(
-                        &format!("ERROR: regex invàlida al fitxer d'ignorats: '{e}'",),
-                        1,
-                    )
-                });
-
-            inform(&format!(
-                "recopilatori.ignored detectat amb '{}' patrons\n",
-                r.len()
-            ));
-            r
-        }
-        Err(e) if e.kind() == io::ErrorKind::NotFound => {
-            inform("No `recopilatori.ignored` detected\n");
-            vec![]
-        }
-        e => {
-            e?;
-            unreachable!()
-        }
-    };
+    let ignore_patterns = get_ignore_patterns()?;
     let db_url = dotenv::var("DATABASE_URL")
         .unwrap_or_else(|_| oopsie("Falta fitxer .env amb $DATABASE_URL (vegi README.md)", 2));
     inform(&format!("Found DATABASE_URL: '{db_url}'\n"));

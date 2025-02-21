@@ -3,11 +3,14 @@ pub mod existance;
 pub mod geoloc;
 pub mod populating;
 pub use databaseing::*;
+use regex::Regex;
 
+use std::collections::VecDeque;
 use std::fs;
 use std::fs::DirEntry;
 use std::io;
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 pub const ANSIRED: &str = "\x1b[1;31m";
@@ -19,32 +22,21 @@ pub const ANSICLEAR: &str = "\x1b[0m";
 
 pub const MAX_ALLOWED_OPEN_FILE_COUNT: usize = 1_000_000;
 
-fn get_open_file_count() -> io::Result<usize> {
-    let entries = fs::read_dir("/proc/self/fd")?;
-
-    Ok(entries
-        .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.file_name() != "." && entry.file_name() != "..")
-        .count())
-}
 /// 'dir' should be a directory, otherwise an empty vec will be returned
-pub fn recurse_files(dir: &Path) -> io::Result<Vec<DirEntry>> {
-    if get_open_file_count().unwrap() < MAX_ALLOWED_OPEN_FILE_COUNT {
-        let mut r = vec![];
-        if dir.is_dir() {
-            for entry in fs::read_dir(dir)? {
-                let entry = entry?;
-                let path = entry.path();
-                if path.is_dir() {
-                    r.append(&mut recurse_files(&path)?);
-                } else {
-                    r.push(entry);
-                }
+pub fn recurse_files(dir: &Path, queue: Arc<Mutex<VecDeque<DirEntry>>>) -> io::Result<()> {
+    if dir.is_dir() {
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                recurse_files(&path, queue.clone())?;
+            } else {
+                let mut lock = queue.lock().unwrap();
+                lock.push_back(entry);
             }
         }
-        Ok(r)
-    } else {
     }
+    Ok(())
 }
 
 pub fn inform(s: &str) {
@@ -86,4 +78,37 @@ pub fn hashes_of(full_data: &[u8]) -> ([u8; 16], [u8; 16]) {
 pub fn oopsie(s: &str, code: i32) -> ! {
     error(s);
     std::process::exit(code);
+}
+
+pub fn get_ignore_patterns() -> Result<Vec<Regex>, sqlx::Error> {
+    let ignore_patterns: Vec<Regex> = match fs::read_to_string("recopilatori.ignored") {
+        Ok(c) => {
+            let r = c
+                .split('\n')
+                .filter(|s| !s.is_empty())
+                .map(Regex::new)
+                .collect::<Result<Vec<Regex>, _>>()
+                .unwrap_or_else(|e| {
+                    oopsie(
+                        &format!("ERROR: regex invàlida al fitxer d'ignorats: '{e}'",),
+                        1,
+                    )
+                });
+
+            inform(&format!(
+                "recopilatori.ignored detectat amb '{}' patrons\n",
+                r.len()
+            ));
+            r
+        }
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {
+            inform("No `recopilatori.ignored` detected\n");
+            vec![]
+        }
+        e => {
+            e?;
+            unreachable!()
+        }
+    };
+    Ok(ignore_patterns)
 }
