@@ -1,14 +1,12 @@
 use crate::{
-    hashes_of, inform, insert_file, mark_not_seen_as_deleted, oopsie, recurse_files, ANSICLEAR,
-    ANSIITALIC,
+    hashes_of, inform, insert_file, mark_not_seen_as_deleted, oopsie, recurse_files,
+    MAX_ALLOWED_OPEN_FILE_COUNT,
 };
 use regex::Regex;
 use std::{
-    collections::VecDeque,
     fs::{self, DirEntry},
     path::Path,
-    sync::{mpsc, Arc, Mutex},
-    thread,
+    sync::mpsc::{self, Receiver, RecvError},
 };
 
 use sqlx::{
@@ -16,65 +14,59 @@ use sqlx::{
     types::chrono::{DateTime, Utc},
 };
 
-async fn bulk_insert_files(
+async fn insert_file_report(
     pool: SqlitePool,
-    queue: Arc<Mutex<VecDeque<DirEntry>>>,
-    folder: String,
-    ignore_patterns: Vec<Regex>,
+    file: DirEntry,
+    ignore_patterns: &[Regex],
+    folder: &str,
     start_time: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
-    // When we run out of files, the lock will drop
-    while let Some(file) = {
-        let mut q = queue.lock().unwrap();
-        q.pop_front()
-    } {
-        let curr_time: DateTime<Utc> = Utc::now();
+    let curr_time: DateTime<Utc> = Utc::now();
 
-        let real_path = file.path();
-        let db_path = file.path().clone();
-        let db_path = db_path.strip_prefix(&folder).unwrap_or_else(|_| {
-            oopsie(
-                "Error intern: fitxer de la carpeta no està dins de la carpeta?",
-                1,
-            )
-        });
-
-        if let Some(r) = ignore_patterns
-            .iter()
-            .find(|r| r.is_match(&db_path.display().to_string()))
-        {
-            inform(&format!(
-                "Ignoring file '{}' (per regex '{}')",
-                db_path.display(),
-                r
-            ));
-            continue;
-        }
-        let file_contents: Vec<u8> = fs::read(&real_path)?;
-
-        inform(&format!("Buscant la hash de: {db_path:?}"));
-        let (short_hash, full_hash) = hashes_of(&file_contents);
-
-        insert_file(
-            &pool,
-            &real_path,
-            db_path,
-            short_hash,
-            full_hash,
-            file_contents.len() as i64,
-            curr_time,
+    let real_path = file.path();
+    let db_path = file.path().clone();
+    let db_path = db_path.strip_prefix(&folder).unwrap_or_else(|_| {
+        oopsie(
+            "Error intern: fitxer de la carpeta no està dins de la carpeta?",
+            1,
         )
-        .await?;
+    });
 
-        let delta = Utc::now() - curr_time;
+    if let Some(r) = ignore_patterns
+        .iter()
+        .find(|r| r.is_match(&db_path.display().to_string()))
+    {
         inform(&format!(
-            "Processing file {} took '{ANSIITALIC}{delta}{ANSICLEAR}'\n",
-            db_path.display()
+            "Ignoring file '{}' (per regex '{}')",
+            db_path.display(),
+            r
         ));
-
-        mark_not_seen_as_deleted(pool.clone(), &start_time).await?;
+        return Ok(());
     }
-    Ok::<(), sqlx::Error>(())
+    let file_contents: Vec<u8> = fs::read(&real_path)?;
+
+    inform(&format!("Buscant la hash de: {db_path:?}"));
+    let (short_hash, full_hash) = hashes_of(&file_contents);
+
+    insert_file(
+        &pool,
+        &real_path,
+        db_path,
+        short_hash,
+        full_hash,
+        file_contents.len() as i64,
+        curr_time,
+    )
+    .await?;
+
+    let delta = Utc::now() - curr_time;
+    inform(&format!(
+        "Processing file {} took '{ANSIITALIC}{delta}{ANSICLEAR}'\n",
+        db_path.display()
+    ));
+
+    mark_not_seen_as_deleted(pool.clone(), &start_time).await?;
+    Ok(())
 }
 
 /// Make database reflect state of `folder`
@@ -84,30 +76,48 @@ pub async fn populate(
     ignore_patterns: Vec<Regex>,
 ) -> Result<(), sqlx::Error> {
     let start_time: DateTime<Utc> = Utc::now();
-    let queue = Arc::new(Mutex::new(VecDeque::new()));
+    let (tx, rx) = mpsc::sync_channel(MAX_ALLOWED_OPEN_FILE_COUNT);
 
-    let bulk_insertion_handle = tokio::spawn(bulk_insert_files(
-        pool,
-        queue.clone(),
-        folder.clone(),
-        ignore_patterns,
-        start_time,
-    ))
-    .await;
+    inform("Starting populate...");
 
-    let reader_handle = thread::spawn(move || {
-        recurse_files(Path::new(&folder), queue.clone())?;
-        Ok::<(), sqlx::Error>(())
+    let folder_b = folder.clone();
+    let bulk_insertion_handle = tokio::task::spawn_blocking(move || {
+        bulk_insert_files(pool, rx, folder_b, ignore_patterns, start_time)
     });
+    inform("Bulk insertion thread is online");
 
-    match reader_handle.join() {
+    let reader_handle = tokio::spawn(async move { recurse_files(Path::new(&folder), &tx) });
+    inform("File reading thread is online");
+
+    match reader_handle.await {
         Ok(r) => r?,
-        Err(_) => oopsie("Error llegint fitxers!", 2),
+        Err(e) => oopsie(&format!("Error llegint fitxers: '{e}'", 2)),
     };
-    match bulk_insertion_handle {
-        Ok(h) => h?,
-        Err(e) => oopsie(&format!("Error fent les insercions!: {e}"), 2),
+    match bulk_insertion_handle.await {
+        Ok(h) => h.await?,
+        Err(e) => oopsie(&format!("Error fent les insercions: '{e}"), 2),
     }
 
+    inform("Finished populating database successfully!");
+
     Ok(())
+}
+
+async fn bulk_insert_files(
+    pool: SqlitePool,
+    queue: Receiver<DirEntry>,
+    folder: String,
+    ignore_patterns: Vec<Regex>,
+    start_time: DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+    loop {
+        match queue.recv() {
+            Ok(file) => {
+                insert_file_report(pool.clone(), file, &ignore_patterns, &folder, start_time)
+                    .await?;
+            }
+            Err(RecvError) => break,
+        }
+    }
+    Ok::<(), sqlx::Error>(())
 }
