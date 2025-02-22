@@ -104,7 +104,6 @@ pub async fn populate(
         Ok(r) => r?,
         Err(_) => oopsie("Error llegint fitxers!", 2),
     };
-
     match bulk_insertion_handle {
         Ok(h) => h?,
         Err(e) => oopsie(&format!("Error fent les insercions!: {e}"), 2),

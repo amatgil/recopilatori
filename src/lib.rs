@@ -11,7 +11,8 @@ use std::fs::DirEntry;
 use std::io;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use std::thread::sleep;
+use std::time::{Duration, Instant};
 
 pub const ANSIRED: &str = "\x1b[1;31m";
 pub const ANSIGREEN: &str = "\x1b[1;32m";
@@ -31,8 +32,13 @@ pub fn recurse_files(dir: &Path, queue: Arc<Mutex<VecDeque<DirEntry>>>) -> io::R
             if path.is_dir() {
                 recurse_files(&path, queue.clone())?;
             } else {
-                let mut lock = queue.lock().unwrap();
-                lock.push_back(entry);
+                let mut q = queue.lock().unwrap();
+                while q.len() >= MAX_ALLOWED_OPEN_FILE_COUNT {
+                    drop(q);
+                    sleep(Duration::from_micros(100));
+                    q = queue.lock().unwrap();
+                }
+                q.push_back(entry);
             }
         }
     }
