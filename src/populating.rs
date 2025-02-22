@@ -65,7 +65,6 @@ async fn insert_file_report(
         db_path.display()
     ));
 
-    mark_not_seen_as_deleted(pool.clone(), &start_time).await?;
     Ok(())
 }
 
@@ -119,5 +118,7 @@ async fn bulk_insert_files(
             Err(RecvError) => break,
         }
     }
+
+    mark_not_seen_as_deleted(pool.clone(), &start_time).await?;
     Ok::<(), sqlx::Error>(())
 }
