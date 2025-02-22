@@ -5,17 +5,12 @@ pub mod populating;
 pub use databaseing::*;
 use regex::Regex;
 
-use std::collections::VecDeque;
 use std::fs;
 use std::fs::DirEntry;
 use std::io;
-use std::ops::{Deref, DerefMut};
 use std::path::Path;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::mpsc::{Receiver, Sender, SyncSender};
-use std::sync::{Arc, Mutex};
-use std::thread::sleep;
-use std::time::{Duration, Instant};
+use std::sync::mpsc::SyncSender;
+use std::time::Instant;
 
 pub const ANSILOG: &str = "\x1b[1;34;40m";
 pub const ANSIRED: &str = "\x1b[1;31m";

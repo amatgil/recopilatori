@@ -1,6 +1,6 @@
 use crate::{
-    hashes_of, inform, insert_file, mark_not_seen_as_deleted, oopsie, recurse_files,
-    MAX_ALLOWED_OPEN_FILE_COUNT,
+    hashes_of, inform, insert_file, mark_not_seen_as_deleted, oopsie, recurse_files, ANSICLEAR,
+    ANSIITALIC, MAX_ALLOWED_OPEN_FILE_COUNT,
 };
 use regex::Regex;
 use std::{
@@ -91,7 +91,7 @@ pub async fn populate(
 
     match reader_handle.await {
         Ok(r) => r?,
-        Err(e) => oopsie(&format!("Error llegint fitxers: '{e}'", 2)),
+        Err(e) => oopsie(&format!("Error llegint fitxers: '{e}'"), 2),
     };
     match bulk_insertion_handle.await {
         Ok(h) => h.await?,

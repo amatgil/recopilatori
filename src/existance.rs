@@ -6,11 +6,7 @@ use sqlx::sqlite::SqlitePool;
 
 use std::{
     path::Path,
-    sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
-        mpsc::{self, Receiver},
-        Arc,
-    },
+    sync::mpsc::{self, Receiver},
     thread,
     time::Instant,
 };
