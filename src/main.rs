@@ -2,7 +2,6 @@ use recopilatori::{
     clear_all, existance::existance_check, geoloc::update_geoloc, get_ignore_patterns, inform,
     oopsie, populating::populate,
 };
-use regex::Regex;
 use std::{fs, io, path::PathBuf};
 
 use sqlx::sqlite::SqlitePoolOptions;

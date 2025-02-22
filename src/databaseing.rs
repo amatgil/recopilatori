@@ -1,4 +1,4 @@
-use crate::{fs, inform, short_hash_of, Path};
+use crate::{fs, inform, log, short_hash_of, Path};
 use sqlx::{
     types::chrono::{DateTime, Utc},
     types::uuid::Uuid,
@@ -57,6 +57,11 @@ pub async fn insert_file(
 ) -> Result<(), sqlx::Error> {
     inform("Insertant a BD...");
     let tipus_id = get_tipus_id_of(pool, real_path).await?;
+    log(&format!(
+        "\tValor és: ({}, {:?})",
+        db_path.display(),
+        tipus_id,
+    ));
 
     let db_path = db_path.to_string_lossy();
     let short_hash = sqlx::types::Uuid::from_slice(&short_hash).expect("invalid hash provided");
