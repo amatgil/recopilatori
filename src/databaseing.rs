@@ -1,4 +1,4 @@
-use crate::{fs, inform, log, short_hash_of, Path};
+use crate::{error, fs, inform, log, short_hash_of, Path};
 use sqlx::{
     types::chrono::{DateTime, Utc},
     types::uuid::Uuid,
@@ -22,30 +22,30 @@ pub async fn clear_all(pool: &SqlitePool) -> Result<(), sqlx::Error> {
 }
 
 pub async fn get_tipus_id_of(pool: &SqlitePool, path: &Path) -> Result<Option<i64>, sqlx::Error> {
-    if let Some(ext) = path.extension() {
-        let ext = ext.to_string_lossy().to_ascii_lowercase();
-        let q = sqlx::query!(
-            "INSERT OR IGNORE INTO tipus_fitxers (tipus_nom) VALUES (?)",
-            ext
-        )
-        .execute(pool)
-        .await?;
+    match path.extension() {
+        None => Ok(None),
+        Some(ext) => {
+            let ext = ext.to_string_lossy().to_ascii_lowercase();
+            let s = sqlx::query!("SELECT * FROM tipus_fitxers WHERE tipus_nom = ?", ext)
+                .fetch_optional(pool)
+                .await?;
 
-        if q.rows_affected() > 0 {
-            Ok(Some(q.last_insert_rowid()))
-        } else {
-            let r = sqlx::query!(
-                "SELECT tipus_id FROM tipus_fitxers t WHERE t.tipus_nom = ?",
-                ext
-            )
-            .fetch_one(pool)
-            .await?;
-            Ok(r.tipus_id)
+            match s {
+                Some(ret) => Ok(ret.tipus_id),
+                None => {
+                    let q = sqlx::query!("INSERT INTO tipus_fitxers (tipus_nom) VALUES (?)", ext)
+                        .execute(pool)
+                        .await?;
+                    if q.rows_affected() == 0 {
+                        error("Extension both existed and then didn't exist")
+                    }
+                    Ok(Some(q.last_insert_rowid()))
+                }
+            }
         }
-    } else {
-        Ok(None)
     }
 }
+
 pub async fn insert_file(
     pool: &SqlitePool,
     real_path: &Path,
@@ -58,14 +58,20 @@ pub async fn insert_file(
     inform("Insertant a BD...");
     let tipus_id = get_tipus_id_of(pool, real_path).await?;
     log(&format!(
-        "\tValor és: ({}, {:?})",
+        "\tValor és: ({}, {:?}, {:x?})",
         db_path.display(),
         tipus_id,
+        short_hash
     ));
 
     let db_path = db_path.to_string_lossy();
     let short_hash = sqlx::types::Uuid::from_slice(&short_hash).expect("invalid hash provided");
     let full_hash = sqlx::types::Uuid::from_slice(&full_hash).expect("invalid hash provided");
+
+    log(&format!(
+        "Query es: INSERT OR REPLACE INTO fitxers (full_path, tipus_id, last_scanned, fitxer_size, is_deleted) VALUES ({}, {:?}, {}, {}, FALSE);" ,
+        db_path, tipus_id, scan_time, file_size,
+    ));
 
     let fitxer_query = sqlx::query!(
         r#"

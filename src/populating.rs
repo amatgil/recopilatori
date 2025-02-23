@@ -1,6 +1,6 @@
 use crate::{
-    hashes_of, inform, insert_file, mark_not_seen_as_deleted, oopsie, recurse_files, ANSICLEAR,
-    ANSIITALIC, MAX_ALLOWED_OPEN_FILE_COUNT,
+    hashes_of, inform, insert_file, log, mark_not_seen_as_deleted, oopsie, recurse_files,
+    ANSICLEAR, ANSIITALIC, MAX_ALLOWED_OPEN_FILE_COUNT,
 };
 use regex::Regex;
 use std::{
@@ -19,7 +19,6 @@ async fn insert_file_report(
     file: DirEntry,
     ignore_patterns: &[Regex],
     folder: &str,
-    start_time: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
     let curr_time: DateTime<Utc> = Utc::now();
 
@@ -104,16 +103,16 @@ pub async fn populate(
 
 async fn bulk_insert_files(
     pool: SqlitePool,
-    queue: Receiver<DirEntry>,
+    rx: Receiver<DirEntry>,
     folder: String,
     ignore_patterns: Vec<Regex>,
     start_time: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
     loop {
-        match queue.recv() {
+        match rx.recv() {
             Ok(file) => {
-                insert_file_report(pool.clone(), file, &ignore_patterns, &folder, start_time)
-                    .await?;
+                log(&format!("Received file {}", file.path().display()));
+                insert_file_report(pool.clone(), file, &ignore_patterns, &folder).await?;
             }
             Err(RecvError) => break,
         }

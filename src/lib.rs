@@ -12,7 +12,7 @@ use std::path::Path;
 use std::sync::mpsc::SyncSender;
 use std::time::Instant;
 
-pub const ANSILOG: &str = "\x1b[1;34;40m";
+pub const ANSILOG: &str = "\x1b[34;40m";
 pub const ANSIRED: &str = "\x1b[1;31m";
 pub const ANSIGREEN: &str = "\x1b[1;32m";
 pub const ANSIYELLOW: &str = "\x1b[1;33m";
@@ -23,19 +23,19 @@ pub const ANSICLEAR: &str = "\x1b[0m";
 pub const MAX_ALLOWED_OPEN_FILE_COUNT: usize = 500_000;
 
 /// 'dir' should be a directory, otherwise an empty vec will be returned
-pub fn recurse_files(dir: &Path, queue: &SyncSender<DirEntry>) -> io::Result<()> {
+pub fn recurse_files(dir: &Path, tx: &SyncSender<DirEntry>) -> io::Result<()> {
     if dir.is_dir() {
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
             let path = entry.path();
             if path.is_dir() {
-                recurse_files(&path, queue)?;
+                recurse_files(&path, tx)?;
             } else {
                 log(&format!(
-                    "Sending file '{}' from sender thread",
+                    "Sending filename '{}' from sender thread",
                     entry.file_name().to_string_lossy()
                 ));
-                queue.send(entry).unwrap();
+                tx.send(entry).unwrap();
             }
         }
     }
