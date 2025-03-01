@@ -51,7 +51,7 @@ pub async fn insert_file(
     real_path: &Path,
     db_path: &Path,
     short_hash: [u8; 16],
-    full_hash: [u8; 16],
+    full_hash: Option<[u8; 16]>,
     file_size: i64,
     scan_time: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
@@ -66,7 +66,7 @@ pub async fn insert_file(
 
     let db_path = db_path.to_string_lossy();
     let short_hash = sqlx::types::Uuid::from_slice(&short_hash).expect("invalid hash provided");
-    let full_hash = sqlx::types::Uuid::from_slice(&full_hash).expect("invalid hash provided");
+    let full_hash = full_hash.map(|h| sqlx::types::Uuid::from_slice(&h).expect("invalid hash provided"));
 
     log(&format!(
         "Query es: INSERT OR REPLACE INTO fitxers (full_path, tipus_id, last_scanned, fitxer_size, is_deleted) VALUES ({}, {:?}, {}, {}, FALSE);" ,
@@ -86,6 +86,7 @@ pub async fn insert_file(
     .execute(pool)
     .await?;
 
+    /* i don't remember why this exists
     sqlx::query!(
         r#"
         UPDATE fitxers SET last_scanned = ? WHERE full_path = ?;
@@ -94,7 +95,7 @@ pub async fn insert_file(
         db_path
     )
     .execute(pool)
-    .await?;
+    .await?;*/
 
     if fitxer_query.rows_affected() > 0 {
         let hash_id = fitxer_query.last_insert_rowid();

@@ -3,6 +3,7 @@ use recopilatori::{
     oopsie, populating::populate,
 };
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use sqlx::sqlite::SqlitePoolOptions;
 
@@ -45,7 +46,7 @@ async fn main() -> Result<(), sqlx::Error> {
     match cli.command {
         Some(Commands::Populate {
             path_directori_font: p,
-        }) => populate(pool, p, ignore_patterns).await?,
+        }) => populate(pool, Arc::new(p), Arc::new(ignore_patterns)).await?,
         Some(Commands::Exists {
             path_fitxers_unknown: p,
         }) => existance_check(pool, p).await?,

@@ -5,7 +5,7 @@ use crate::{
 use sqlx::sqlite::SqlitePool;
 
 use std::{
-    path::Path,
+    path::PathBuf,
     sync::mpsc::{self, Receiver},
     thread,
     time::Instant,
@@ -57,22 +57,19 @@ async fn report_existance(
 pub async fn existance_check(pool: SqlitePool, folder: String) -> Result<(), sqlx::Error> {
     let (tx, rx) = mpsc::sync_channel(MAX_ALLOWED_OPEN_FILE_COUNT);
 
-    let checker_handle = thread::spawn(move || file_bulk_exists_check(pool, rx));
+    let checker_handle = tokio::spawn(file_bulk_exists_check(pool, rx));
     inform("Querying thread up and running");
 
-    let reader_handle = thread::spawn(move || {
-        recurse_files(Path::new(&folder), &tx)?;
-        Ok::<(), sqlx::Error>(())
-    });
+    let reader_handle = tokio::spawn(recurse_files(PathBuf::from(&folder), tx));
     inform("File-reading thread up and running");
 
-    match checker_handle.join() {
-        Ok(c) => c.await?,
+    match checker_handle.await.unwrap() {
+        Ok(c) => c,
         Err(_) => oopsie(&format!("Error comprovant si el fitxer existi"), 11),
     };
 
-    match reader_handle.join() {
-        Ok(r) => r?,
+    match reader_handle.await.unwrap() {
+        Ok(r) => r,
         Err(_) => oopsie("Error llegint fitxers!", 1),
     };
 
